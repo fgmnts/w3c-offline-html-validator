@@ -3,7 +3,8 @@ import * as vscode from "vscode";
 import * as child_process from "child_process";
 import * as path from "path";
 import * as fs from "fs";
-import * as os from 'os';
+import * as os from "os";
+import * as https from "https";
 
 let extPath: string | null = null;
 
@@ -89,41 +90,53 @@ function validate(
 
   switch (os.platform()) {
     case "darwin": // macOS
-      vnuExecutable = path.join(`${extPath}`,'validator', "vnu.osx", "vnu-runtime-image", "bin", "vnu");
+      vnuExecutable = path.join(
+        `${extPath}`,
+        "validator",
+        "vnu.osx",
+        "vnu-runtime-image",
+        "bin",
+        "vnu"
+      );
       break;
     case "win32": // Windows
-      vnuExecutable = path.join(`${extPath}`,'validator', "vnu.windows", "vnu-runtime-image", "bin", "vnu");
+      vnuExecutable = path.join(
+        `${extPath}`,
+        "validator",
+        "vnu.windows",
+        "vnu-runtime-image",
+        "bin",
+        "vnu"
+      );
       break;
     case "linux": // Linux
-      vnuExecutable = path.join(`${extPath}`,'validator', "vnu.linux", "vnu-runtime-image", "bin", "vnu");
+      vnuExecutable = path.join(
+        `${extPath}`,
+        "validator",
+        "vnu.linux",
+        "vnu-runtime-image",
+        "bin",
+        "vnu"
+      );
       break;
     default:
       vscode.window.showErrorMessage("Unsupported OS platform.");
       return;
   }
 
-
   // Check if vnu.jar exists synchronously
   if (!vnuExecutable || !fs.existsSync(vnuExecutable)) {
     vscode.window.showErrorMessage(
       "vnu not found. Please check the htmlValidator.vnuJarPath setting. " +
-      vnuExecutable
+        vnuExecutable
     );
     return;
   }
 
-
   const filePath = document.uri.fsPath;
 
-
   // Command arguments
-  const args = [
-    "--format",
-    "json",
-    "--exit-zero-always",
-    filePath,
-  ];
-
+  const args = ["--format", "json", "--exit-zero-always", filePath];
 
   // const javaExecutable = "java";
   // const args = [
@@ -219,5 +232,97 @@ function validate(
     }
 
     diagnosticCollection.set(document.uri, diagnostics);
+  });
+}
+
+// TODO: download according to OS
+
+async function ensureVnuBinary(vnuBasePath: string): Promise<string | null> {
+  let vnuExecutable: string;
+
+  switch (os.platform()) {
+    case "darwin":
+      vnuExecutable = path.join(vnuBasePath, "vnu.osx", "vnu-runtime.sh");
+      break;
+    case "win32":
+      vnuExecutable = path.join(vnuBasePath, "vnu.windows", "vnu-runtime.bat");
+      break;
+    case "linux":
+      vnuExecutable = path.join(vnuBasePath, "vnu.linux", "vnu-runtime.sh");
+      break;
+    default:
+      vscode.window.showErrorMessage("Unsupported OS platform.");
+      return null;
+  }
+
+  if (fs.existsSync(vnuExecutable)) {
+    return vnuExecutable; // Binary already exists, no need to download
+  }
+
+  // If the binary doesn't exist, download it
+  const binaryUrl = getBinaryDownloadUrl(os.platform());
+  if (!binaryUrl) {
+    vscode.window.showErrorMessage(
+      "Could not find the binary download URL for your platform."
+    );
+    return null;
+  }
+
+  try {
+    await downloadBinary(binaryUrl, vnuBasePath);
+    return vnuExecutable;
+  } catch (error: unknown) {
+    let errorMessage = "An unknown error occurred";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    vscode.window.showErrorMessage(
+      `Failed to download the binary: ${errorMessage}`
+    );
+    return null;
+  }
+
+  // try {
+  //     await downloadBinary(binaryUrl, vnuBasePath);
+  //     return vnuExecutable;
+  // } catch (error) {
+  //     vscode.window.showErrorMessage("Failed to download the binary: " + error.message);
+  //     return null;
+  // }
+}
+
+function getBinaryDownloadUrl(platform: string): string | null {
+  switch (platform) {
+    case "darwin":
+      return "https://github.com/validator/validator/releases/download/latest/vnu.osx.zip";
+    case "win32":
+      return "https://github.com/validator/validator/releases/download/latest/vnu.windows.zip";
+    case "linux":
+      return "https://github.com/validator/validator/releases/download/latest/vnu.linux.zip";
+    default:
+      return null;
+  }
+}
+
+async function downloadBinary(url: string, destPath: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const file = fs.createWriteStream(destPath);
+
+    https
+      .get(url, (response) => {
+        if (response.statusCode !== 200) {
+          reject(new Error(`Failed to get '${url}' (${response.statusCode})`));
+          return;
+        }
+
+        response.pipe(file);
+
+        file.on("finish", () => {
+          file.close(() => resolve());
+        });
+      })
+      .on("error", (err) => {
+        fs.unlink(destPath, () => reject(err));
+      });
   });
 }
