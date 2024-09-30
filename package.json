@@ -2,16 +2,16 @@
   "name": "w3c-offline-html-validator",
   "displayName": "W3C Offline HTML Validator",
   "description": "A VSCode extension for offline HTML validation using W3C standards.",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "engines": {
     "vscode": "^1.93.0"
   },
-  
+  "repository": "https://github.com/fgmnts/w3c-offline-html-validator",
+  "publisher":"fgmnts",
   "categories": [
     "Other"
   ],
   "activationEvents": [
-    
     "onLanguage:html",
     "onSave"
   ],  "main": "./out/extension.js",

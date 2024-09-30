@@ -3,16 +3,16 @@ import * as vscode from "vscode";
 import * as child_process from "child_process";
 import * as path from "path";
 import * as fs from "fs";
+import * as os from 'os';
 
-let extPath: string | null = null
+let extPath: string | null = null;
 
 export function activate(context: vscode.ExtensionContext) {
   console.log("activate activate activate");
 
   const extensionPath = context.extensionUri.path;
-  extPath = extensionPath
-  console.log('Extension folder path:', extensionPath);
-
+  extPath = extensionPath;
+  console.log("Extension folder path:", extensionPath);
 
   const diagnosticCollection =
     vscode.languages.createDiagnosticCollection("html-validator");
@@ -76,40 +76,70 @@ function validate(
   console.log("debug ext", { message });
   console.log("debug ext", { vnuJarPath });
 
-  // Resolve the path if it contains workspace folder variable
-  if (vnuJarPath.includes("${workspaceFolder}") && extPath) {
-    // const workspaceFolder = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0].uri.fsPath : '';
-    vnuJarPath = vnuJarPath.replace("${workspaceFolder}", extPath);
+  // // Resolve the path if it contains workspace folder variable
+  // if (vnuJarPath.includes("${workspaceFolder}") && extPath) {
+  //   // const workspaceFolder = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0].uri.fsPath : '';
+  //   vnuJarPath = vnuJarPath.replace("${workspaceFolder}", extPath);
+  // }
+
+  // console.log("debug ext", { vnuJarPath });
+
+  // Detect the OS
+  let vnuExecutable: string;
+
+  switch (os.platform()) {
+    case "darwin": // macOS
+      vnuExecutable = path.join(`${extPath}`,'validator', "vnu.osx", "vnu-runtime-image", "bin", "vnu");
+      break;
+    case "win32": // Windows
+      vnuExecutable = path.join(`${extPath}`,'validator', "vnu.windows", "vnu-runtime-image", "bin", "vnu");
+      break;
+    case "linux": // Linux
+      vnuExecutable = path.join(`${extPath}`,'validator', "vnu.linux", "vnu-runtime-image", "bin", "vnu");
+      break;
+    default:
+      vscode.window.showErrorMessage("Unsupported OS platform.");
+      return;
   }
 
-  console.log("debug ext", { vnuJarPath });
 
   // Check if vnu.jar exists synchronously
-  if (!vnuJarPath || !fs.existsSync(vnuJarPath)) {
+  if (!vnuExecutable || !fs.existsSync(vnuExecutable)) {
     vscode.window.showErrorMessage(
-      "vnu.jar not found. Please check the htmlValidator.vnuJarPath setting. " +
-        vnuJarPath
+      "vnu not found. Please check the htmlValidator.vnuJarPath setting. " +
+      vnuExecutable
     );
     return;
   }
 
+
   const filePath = document.uri.fsPath;
 
-  const javaExecutable = "java";
+
+  // Command arguments
   const args = [
-    "-jar",
-    vnuJarPath,
     "--format",
     "json",
     "--exit-zero-always",
     filePath,
   ];
 
+
+  // const javaExecutable = "java";
+  // const args = [
+  //   "-jar",
+  //   vnuJarPath,
+  //   "--format",
+  //   "json",
+  //   "--exit-zero-always",
+  //   filePath,
+  // ];
+
   const outputChannel = vscode.window.createOutputChannel("HTML Validator");
   outputChannel.clear();
   // outputChannel.show(); // Uncomment if you want the Output channel to be visible
 
-  const process = child_process.spawn(javaExecutable, args);
+  const process = child_process.spawn(vnuExecutable, args);
 
   let stdout = "";
   let stderr = "";
@@ -153,9 +183,19 @@ function validate(
         );
         diagnostics.push(diagnostic);
       }
-      if (severeCount > 0)
-        vscode.window.showErrorMessage("1 or more ERRORS found, please fix");
-      else if (warningCount > 0)
+      if (severeCount > 0) {
+        vscode.window
+          .showErrorMessage(
+            "1 or more ERRORS found, please fix",
+            "Go to Problems"
+          )
+          .then((selection) => {
+            if (selection === "Go to Problems") {
+              vscode.commands.executeCommand("workbench.actions.view.problems");
+            }
+          });
+        // vscode.window.showErrorMessage("1 or more ERRORS found, please fix");
+      } else if (warningCount > 0)
         vscode.window.showWarningMessage("1 or more WARNINGS found");
       else vscode.window.showInformationMessage("Everything is fine");
     } catch (e) {
