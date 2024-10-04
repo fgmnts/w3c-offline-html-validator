@@ -2,7 +2,7 @@
 
 A Visual Studio Code extension that provides offline HTML validation using W3C standards. This extension integrates the W3C Nu HTML Checker directly into VSCode, allowing you to validate your HTML files without an internet connection. All necessary binaries are included in the package, ensuring seamless setup and operation.
 
-![Icon](icon.jpg)
+![Icon](https://github.com/fgmnts/w3c-offline-html-validator/raw/main/icon.jpg)
 
 ---
 
