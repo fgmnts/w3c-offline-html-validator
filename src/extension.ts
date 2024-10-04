@@ -6,7 +6,10 @@ import * as fs from "fs";
 import * as os from "os";
 import * as https from "https";
 
-let extPath: String | string | null = null;
+// let vnuJarPath: string | null = null;
+
+// Detect the OS
+let vnuExecutable: string;
 
 let isValidationEnabled = true;
 let statusBarItem: vscode.StatusBarItem;
@@ -14,7 +17,7 @@ let hasErrors = false;
 
 function showTimedInfoMessage(message: string, duration: number) {
   const infoMessage = vscode.window.showInformationMessage(message);
-  
+
   // // Set timeout to automatically close the message after 'duration' milliseconds
   // setTimeout(() => {
   //     infoMessage.then(item => {
@@ -24,7 +27,6 @@ function showTimedInfoMessage(message: string, duration: number) {
   //     });
   // }, duration);
 }
-
 
 // function updateStatusBarItem() {
 //   statusBarItem.text = `$(check) HTML Validator`;
@@ -41,68 +43,139 @@ function showTimedInfoMessage(message: string, duration: number) {
 function updateStatusBarItem() {
   if (isValidationEnabled) {
     statusBarItem.text = `$(check) HTML Validator`;
-    statusBarItem.tooltip = 'Click to disable HTML validation on save';
-    statusBarItem.color = hasErrors ? new vscode.ThemeColor('statusBarItem.errorForeground') : undefined;
+    statusBarItem.tooltip = "Click to disable HTML validation on save";
+    statusBarItem.color = hasErrors
+      ? new vscode.ThemeColor("statusBarItem.errorForeground")
+      : undefined;
     statusBarItem.backgroundColor = undefined;
   } else {
     statusBarItem.text = `$(x) HTML Validator (Disabled)`;
-    statusBarItem.tooltip = 'Click to enable HTML validation on save';
-    statusBarItem.color = new vscode.ThemeColor('statusBarItem.inactiveForeground');
-    statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.inactiveBackground');
+    statusBarItem.tooltip = "Click to enable HTML validation on save";
+    statusBarItem.color = new vscode.ThemeColor(
+      "statusBarItem.inactiveForeground"
+    );
+    statusBarItem.backgroundColor = new vscode.ThemeColor(
+      "statusBarItem.inactiveBackground"
+    );
   }
   statusBarItem.show();
 }
 
-
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
   console.log("activate activate activate");
   const diagnosticCollection =
     vscode.languages.createDiagnosticCollection("html-validator");
   context.subscriptions.push(diagnosticCollection);
-  isValidationEnabled = context.globalState.get<boolean>('htmlValidator.isValidationEnabled', true);
+  isValidationEnabled = context.globalState.get<boolean>(
+    "htmlValidator.isValidationEnabled",
+    true
+  );
 
-  const extensionPath = context.extensionUri.path;
+  const config = vscode.workspace.getConfiguration("htmlValidator");
+  vnuExecutable = config.inspect<string>('vnuExecutable')?.globalValue || '';
+ //  config.get<string>("vnuExecutable", "");
+  console.log({ vnuExecutable });
+  if (!vnuExecutable) {
+    console.log(">> no path");
+    // // The setting is unset or empty
+    // const desiredPath = '/path/to/your/vnu.jar'; // Replace this with your actual path
 
-  // const normalizedPath = path.normalize(extensionPath); // This will normalize the path for the current platform
+    let extensionPath = context.extensionUri.path;
 
-  extPath = extensionPath; //path.normalize(extensionPath);
+    // const normalizedPath = path.normalize(extensionPath); // This will normalize the path for the current platform
 
-  if (os.platform() === "win32") { // Windows
-    extPath = removeLeadingSlashOrBackslash(extPath);
+    // let extPath = extensionPath; //path.normalize(extensionPath);
+
+    console.log(">> Extension folder path:", extensionPath);
+
+    if (os.platform() === "win32") {
+      // Windows
+      extensionPath = removeLeadingSlashOrBackslash(extensionPath);
+    }
+
+    if (!extensionPath) {
+      vscode.window.showErrorMessage("Unsupported base path.");
+    }
+
+    switch (os.platform()) {
+      case "darwin": // macOS
+        vnuExecutable = path.join(
+          `${extensionPath}`,
+          "validator",
+          "vnu.osx",
+          "vnu-runtime-image",
+          "bin",
+          "vnu"
+        );
+        break;
+      case "win32": // Windows
+        vnuExecutable = path.join(
+          `${extensionPath}`,
+          "validator",
+          "vnu.windows",
+          "vnu-runtime-image",
+          "bin",
+          "vnu.bat"
+        );
+        break;
+      case "linux": // Linux
+        vnuExecutable = path.join(
+          `${extensionPath}`,
+          "validator",
+          "vnu.linux",
+          "vnu-runtime-image",
+          "bin",
+          "vnu"
+        );
+        break;
+      default:
+        vscode.window.showErrorMessage("Unsupported OS platform.");
+        return;
+    }
+
+    await config.update(
+      "vnuExecutable",
+      vnuExecutable,
+      vscode.ConfigurationTarget.Global
+    );
+    // vnuJarPath = extensionPath!;
   }
 
+  statusBarItem = vscode.window.createStatusBarItem(
+    vscode.StatusBarAlignment.Left,
+    -100
+  );
+  statusBarItem.command = "htmlValidator.toggleValidation";
+  context.subscriptions.push(statusBarItem);
 
-  console.log("Extension folder path:", extensionPath);
-  console.log("normalized extension folder path:", extPath);
-
-
-statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, -100);
-statusBarItem.command = 'htmlValidator.toggleValidation';
-context.subscriptions.push(statusBarItem);
-
-// Set initial status bar item state
-updateStatusBarItem();
-
-const toggleValidationCommand = vscode.commands.registerCommand('htmlValidator.toggleValidation', () => {
-  isValidationEnabled = !isValidationEnabled;
+  // Set initial status bar item state
   updateStatusBarItem();
-  context.globalState.update('htmlValidator.isValidationEnabled', isValidationEnabled);
 
-  // Clear diagnostics if validation is disabled
-  if (!isValidationEnabled) {
-    diagnosticCollection.clear();
-  } else {
-    // Re-validate the active document if validation is enabled
-    if (vscode.window.activeTextEditor) {
-      const document = vscode.window.activeTextEditor.document;
-      if (document.languageId === 'html') {
-        validate(document, diagnosticCollection);
+  const toggleValidationCommand = vscode.commands.registerCommand(
+    "htmlValidator.toggleValidation",
+    () => {
+      isValidationEnabled = !isValidationEnabled;
+      updateStatusBarItem();
+      context.globalState.update(
+        "htmlValidator.isValidationEnabled",
+        isValidationEnabled
+      );
+
+      // Clear diagnostics if validation is disabled
+      if (!isValidationEnabled) {
+        diagnosticCollection.clear();
+      } else {
+        // Re-validate the active document if validation is enabled
+        if (vscode.window.activeTextEditor) {
+          const document = vscode.window.activeTextEditor.document;
+          if (document.languageId === "html") {
+            validate(document, diagnosticCollection);
+          }
+        }
       }
     }
-  }
-});
-context.subscriptions.push(toggleValidationCommand);
-
+  );
+  context.subscriptions.push(toggleValidationCommand);
 
   // Validate the active editor's document if it's an HTML file
   if (vscode.window.activeTextEditor) {
@@ -134,9 +207,9 @@ export function deactivate() {
     statusBarItem.dispose();
   }
 }
-function removeLeadingSlashOrBackslash(str: String | null) {
-  if (!str){
-    return null;
+function removeLeadingSlashOrBackslash(str: string) {
+  if (!str) {
+    return "";
   }
   if (str.startsWith("\\") || str.startsWith("/")) {
     return str.substring(1);
@@ -148,7 +221,9 @@ function validate(
   document: vscode.TextDocument,
   diagnosticCollection: vscode.DiagnosticCollection
 ): void {
-  if (!isValidationEnabled) {return;}
+  if (!isValidationEnabled) {
+    return;
+  }
   console.log("validate validate validate");
   const config = vscode.workspace.getConfiguration("htmlValidator");
   // let vnuJarPath = config.get<string>("vnuJarPath") || "";
@@ -172,7 +247,7 @@ function validate(
   //   "undefined_publisher.w3c-offline-html-validator"
   // )?.extensionUri.path;
 
-  console.log("debug ext", { extPath });
+  console.log("debug ext", { vnuExecutable });
   // console.log("debug ext", { message });
   // console.log("debug ext", { vnuJarPath });
 
@@ -184,53 +259,11 @@ function validate(
 
   // console.log("debug ext", { vnuJarPath });
 
-  // Detect the OS
-  let vnuExecutable: string;
-
-  if (!extPath){ vscode.window.showErrorMessage("Unsupported base path.");}
-
-  switch (os.platform()) {
-    case "darwin": // macOS
-      vnuExecutable = path.join(
-        `${extPath}`,
-        "validator",
-        "vnu.osx",
-        "vnu-runtime-image",
-        "bin",
-        "vnu"
-      );
-      break;
-    case "win32": // Windows
-      vnuExecutable = path.join(
-        `${extPath}`,
-        "validator",
-        "vnu.windows",
-        "vnu-runtime-image",
-        "bin",
-        "vnu.bat"
-      );
-      break;
-    case "linux": // Linux
-      vnuExecutable = path.join(
-        `${extPath}`,
-        "validator",
-        "vnu.linux",
-        "vnu-runtime-image",
-        "bin",
-        "vnu"
-      );
-      break;
-    default:
-      vscode.window.showErrorMessage("Unsupported OS platform.");
-      return;
-  }
-
   const filePath = document.uri.fsPath;
   // Check if vnu.jar exists synchronously
   if (!vnuExecutable || !fs.existsSync(vnuExecutable)) {
     vscode.window.showErrorMessage(
-      "vnu not found. Current path should be: " +
-        vnuExecutable
+      "vnu not found. Current path should be: " + vnuExecutable
     );
     return;
   }
@@ -290,7 +323,6 @@ function validate(
           severeCount++;
         } else {
           warningCount++;
-
         }
         const diagnostic = new vscode.Diagnostic(
           range,
@@ -342,7 +374,6 @@ function validate(
 
     diagnosticCollection.set(document.uri, diagnostics);
     updateStatusBarItem(); // Update status bar color based on errors
-
   });
 }
 

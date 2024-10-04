@@ -22,7 +22,18 @@
         "command": "htmlValidator.toggleValidation",
         "title": "Toggle HTML Validation"
       }
-    ]
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "HTML Validator Settings",
+      "properties": {
+        "htmlValidator.vnuExecutable": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the vnu executable file."
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
