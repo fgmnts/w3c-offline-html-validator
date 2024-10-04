@@ -8,12 +8,30 @@ import * as https from "https";
 
 let extPath: string | null = null;
 
+function showTimedInfoMessage(message, duration) {
+  const infoMessage = vscode.window.showInformationMessage(message);
+  
+  // Set timeout to automatically close the message after 'duration' milliseconds
+  setTimeout(() => {
+      infoMessage.then(item => {
+          if (!item) {
+              vscode.commands.executeCommand('workbench.action.closeMessages');
+          }
+      });
+  }, duration);
+}
+
+
 export function activate(context: vscode.ExtensionContext) {
   console.log("activate activate activate");
 
   const extensionPath = context.extensionUri.path;
-  extPath = extensionPath;
+
+  // const normalizedPath = path.normalize(extensionPath); // This will normalize the path for the current platform
+
+  extPath = extensionPath; //path.normalize(extensionPath);
   console.log("Extension folder path:", extensionPath);
+  console.log("normalized extension folder path:", extPath);
 
   const diagnosticCollection =
     vscode.languages.createDiagnosticCollection("html-validator");
@@ -46,13 +64,20 @@ export function activate(context: vscode.ExtensionContext) {
 
 export function deactivate() {}
 
+function removeLeadingSlashOrBackslash(str: String) {
+  if (str.startsWith("\\") || str.startsWith("/")) {
+    return str.substring(1);
+  }
+  return str;
+}
+
 function validate(
   document: vscode.TextDocument,
   diagnosticCollection: vscode.DiagnosticCollection
 ): void {
   console.log("validate validate validate");
   const config = vscode.workspace.getConfiguration("htmlValidator");
-  let vnuJarPath = config.get<string>("vnuJarPath") || "";
+  // let vnuJarPath = config.get<string>("vnuJarPath") || "";
   ///home/pibeeckm/Documents/
   let message;
   if (vscode.workspace.workspaceFolders !== undefined) {
@@ -74,8 +99,8 @@ function validate(
   // )?.extensionUri.path;
 
   console.log("debug ext", { extPath });
-  console.log("debug ext", { message });
-  console.log("debug ext", { vnuJarPath });
+  // console.log("debug ext", { message });
+  // console.log("debug ext", { vnuJarPath });
 
   // // Resolve the path if it contains workspace folder variable
   // if (vnuJarPath.includes("${workspaceFolder}") && extPath) {
@@ -87,6 +112,8 @@ function validate(
 
   // Detect the OS
   let vnuExecutable: string;
+
+  if (!extPath){ vscode.window.showErrorMessage("Unsupported base path.");}
 
   switch (os.platform()) {
     case "darwin": // macOS
@@ -101,12 +128,12 @@ function validate(
       break;
     case "win32": // Windows
       vnuExecutable = path.join(
-        `${extPath}`,
+        `${removeLeadingSlashOrBackslash(extPath!)}`,
         "validator",
         "vnu.windows",
         "vnu-runtime-image",
         "bin",
-        "vnu"
+        "vnu.bat"
       );
       break;
     case "linux": // Linux
@@ -124,17 +151,15 @@ function validate(
       return;
   }
 
+  const filePath = document.uri.fsPath;
   // Check if vnu.jar exists synchronously
   if (!vnuExecutable || !fs.existsSync(vnuExecutable)) {
     vscode.window.showErrorMessage(
-      "vnu not found. Please check the htmlValidator.vnuJarPath setting. " +
+      "vnu not found. Current path should be: " +
         vnuExecutable
     );
     return;
   }
-
-  const filePath = document.uri.fsPath;
-
   // Command arguments
   const args = ["--format", "json", "--exit-zero-always", filePath];
 
@@ -152,7 +177,7 @@ function validate(
   outputChannel.clear();
   // outputChannel.show(); // Uncomment if you want the Output channel to be visible
 
-  const process = child_process.spawn(vnuExecutable, args);
+  const process = child_process.spawn(vnuExecutable, args, { shell: true });
 
   let stdout = "";
   let stderr = "";
@@ -187,8 +212,11 @@ function validate(
           message.type === "error"
             ? vscode.DiagnosticSeverity.Error
             : vscode.DiagnosticSeverity.Warning;
-        if (severity === vscode.DiagnosticSeverity.Error) severeCount++;
-        else warningCount++;
+        if (severity === vscode.DiagnosticSeverity.Error) {
+          severeCount++;
+        } else {
+          warningCount++;
+        }
         const diagnostic = new vscode.Diagnostic(
           range,
           message.message,
@@ -199,7 +227,7 @@ function validate(
       if (severeCount > 0) {
         vscode.window
           .showErrorMessage(
-            "1 or more ERRORS found, please fix",
+            "⚠️⚠️ 1 or more ERRORS found, please fix",
             "Go to Problems"
           )
           .then((selection) => {
@@ -208,9 +236,12 @@ function validate(
             }
           });
         // vscode.window.showErrorMessage("1 or more ERRORS found, please fix");
-      } else if (warningCount > 0)
-        vscode.window.showWarningMessage("1 or more WARNINGS found");
-      else vscode.window.showInformationMessage("Everything is fine");
+      } else if (warningCount > 0) {
+        vscode.window.showWarningMessage("🙃🙃 1 or more warnings found");
+      } else {
+        // vscode.window.showInformationMessage("✅✅ Everything is fine ");
+        showTimedInfoMessage("✅✅ Everything is fine", 3000);
+      }
     } catch (e) {
       if (e instanceof Error) {
         vscode.window.showErrorMessage(
