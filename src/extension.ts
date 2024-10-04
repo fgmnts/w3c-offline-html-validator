@@ -227,7 +227,7 @@ function validate(
       if (severeCount > 0) {
         vscode.window
           .showErrorMessage(
-            "⚠️⚠️ 1 or more ERRORS found, please fix",
+            "1 or more ERRORS found, please fix ⚠️",
             "Go to Problems"
           )
           .then((selection) => {
@@ -237,9 +237,9 @@ function validate(
           });
         // vscode.window.showErrorMessage("1 or more ERRORS found, please fix");
       } else if (warningCount > 0) {
-        vscode.window.showWarningMessage("🙃🙃 1 or more warnings found");
+        vscode.window.showWarningMessage("1 or more warnings found 🙃");
       } else {
-        // vscode.window.showInformationMessage("✅✅ Everything is fine ");
+        // vscode.window.showInformationMessage("Everything is fine ✅");
         showTimedInfoMessage("✅✅ Everything is fine", 3000);
       }
     } catch (e) {
