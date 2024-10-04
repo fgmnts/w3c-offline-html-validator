@@ -27,13 +27,17 @@ None so far
 ## Release Notes
 
 -
+### 0.0.9
 
+Statusbar item
+Enable / disable validation on save, stored in globalState
 
-### 1.0.0
+### 0.0.1
 
 Initial release 
 
 
-nvm use 20
-npm run compile
-vsce package
+nvm use 20  
+npm run compile  
+vsce package  
+vsce release

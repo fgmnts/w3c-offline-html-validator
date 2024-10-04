@@ -6,36 +6,103 @@ import * as fs from "fs";
 import * as os from "os";
 import * as https from "https";
 
-let extPath: string | null = null;
+let extPath: String | string | null = null;
+
+let isValidationEnabled = true;
+let statusBarItem: vscode.StatusBarItem;
+let hasErrors = false;
 
 function showTimedInfoMessage(message: string, duration: number) {
   const infoMessage = vscode.window.showInformationMessage(message);
   
-  // Set timeout to automatically close the message after 'duration' milliseconds
-  setTimeout(() => {
-      infoMessage.then(item => {
-          if (!item) {
-              vscode.commands.executeCommand('workbench.action.closeMessages');
-          }
-      });
-  }, duration);
+  // // Set timeout to automatically close the message after 'duration' milliseconds
+  // setTimeout(() => {
+  //     infoMessage.then(item => {
+  //         if (!item) {
+  //             vscode.commands.executeCommand('workbench.action.closeMessages');
+  //         }
+  //     });
+  // }, duration);
+}
+
+
+// function updateStatusBarItem() {
+//   statusBarItem.text = `$(check) HTML Validator`;
+//   statusBarItem.tooltip = isValidationEnabled ? 'Disable HTML Validation' : 'Enable HTML Validation';
+//   statusBarItem.command = 'htmlValidator.toggleValidation';
+//   statusBarItem.color = hasErrors ? new vscode.ThemeColor('errorForeground') : undefined;
+//   statusBarItem.show();
+
+//   // Adjust opacity based on validation state
+//   statusBarItem.text = isValidationEnabled ? `$(check) HTML Validator` : `$(x) HTML Validator`;
+//   statusBarItem.opacity = isValidationEnabled ? 1 : 0.5;
+// }
+
+function updateStatusBarItem() {
+  if (isValidationEnabled) {
+    statusBarItem.text = `$(check) HTML Validator`;
+    statusBarItem.tooltip = 'Click to disable HTML validation on save';
+    statusBarItem.color = hasErrors ? new vscode.ThemeColor('statusBarItem.errorForeground') : undefined;
+    statusBarItem.backgroundColor = undefined;
+  } else {
+    statusBarItem.text = `$(x) HTML Validator (Disabled)`;
+    statusBarItem.tooltip = 'Click to enable HTML validation on save';
+    statusBarItem.color = new vscode.ThemeColor('statusBarItem.inactiveForeground');
+    statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.inactiveBackground');
+  }
+  statusBarItem.show();
 }
 
 
 export function activate(context: vscode.ExtensionContext) {
   console.log("activate activate activate");
+  const diagnosticCollection =
+    vscode.languages.createDiagnosticCollection("html-validator");
+  context.subscriptions.push(diagnosticCollection);
+  isValidationEnabled = context.globalState.get<boolean>('htmlValidator.isValidationEnabled', true);
 
   const extensionPath = context.extensionUri.path;
 
   // const normalizedPath = path.normalize(extensionPath); // This will normalize the path for the current platform
 
   extPath = extensionPath; //path.normalize(extensionPath);
+
+  if (os.platform() === "win32") { // Windows
+    extPath = removeLeadingSlashOrBackslash(extPath);
+  }
+
+
   console.log("Extension folder path:", extensionPath);
   console.log("normalized extension folder path:", extPath);
 
-  const diagnosticCollection =
-    vscode.languages.createDiagnosticCollection("html-validator");
-  context.subscriptions.push(diagnosticCollection);
+
+statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, -100);
+statusBarItem.command = 'htmlValidator.toggleValidation';
+context.subscriptions.push(statusBarItem);
+
+// Set initial status bar item state
+updateStatusBarItem();
+
+const toggleValidationCommand = vscode.commands.registerCommand('htmlValidator.toggleValidation', () => {
+  isValidationEnabled = !isValidationEnabled;
+  updateStatusBarItem();
+  context.globalState.update('htmlValidator.isValidationEnabled', isValidationEnabled);
+
+  // Clear diagnostics if validation is disabled
+  if (!isValidationEnabled) {
+    diagnosticCollection.clear();
+  } else {
+    // Re-validate the active document if validation is enabled
+    if (vscode.window.activeTextEditor) {
+      const document = vscode.window.activeTextEditor.document;
+      if (document.languageId === 'html') {
+        validate(document, diagnosticCollection);
+      }
+    }
+  }
+});
+context.subscriptions.push(toggleValidationCommand);
+
 
   // Validate the active editor's document if it's an HTML file
   if (vscode.window.activeTextEditor) {
@@ -62,9 +129,15 @@ export function activate(context: vscode.ExtensionContext) {
   );
 }
 
-export function deactivate() {}
-
-function removeLeadingSlashOrBackslash(str: String) {
+export function deactivate() {
+  if (statusBarItem) {
+    statusBarItem.dispose();
+  }
+}
+function removeLeadingSlashOrBackslash(str: String | null) {
+  if (!str){
+    return null;
+  }
   if (str.startsWith("\\") || str.startsWith("/")) {
     return str.substring(1);
   }
@@ -75,6 +148,7 @@ function validate(
   document: vscode.TextDocument,
   diagnosticCollection: vscode.DiagnosticCollection
 ): void {
+  if (!isValidationEnabled) {return;}
   console.log("validate validate validate");
   const config = vscode.workspace.getConfiguration("htmlValidator");
   // let vnuJarPath = config.get<string>("vnuJarPath") || "";
@@ -128,7 +202,7 @@ function validate(
       break;
     case "win32": // Windows
       vnuExecutable = path.join(
-        `${removeLeadingSlashOrBackslash(extPath!)}`,
+        `${extPath}`,
         "validator",
         "vnu.windows",
         "vnu-runtime-image",
@@ -216,6 +290,7 @@ function validate(
           severeCount++;
         } else {
           warningCount++;
+
         }
         const diagnostic = new vscode.Diagnostic(
           range,
@@ -225,6 +300,7 @@ function validate(
         diagnostics.push(diagnostic);
       }
       if (severeCount > 0) {
+        hasErrors = true;
         vscode.window
           .showErrorMessage(
             "1 or more ERRORS found, please fix ⚠️",
@@ -237,10 +313,12 @@ function validate(
           });
         // vscode.window.showErrorMessage("1 or more ERRORS found, please fix");
       } else if (warningCount > 0) {
+        hasErrors = false;
         vscode.window.showWarningMessage("1 or more warnings found 🙃");
       } else {
+        hasErrors = false;
         // vscode.window.showInformationMessage("Everything is fine ✅");
-        showTimedInfoMessage("✅✅ Everything is fine", 3000);
+        showTimedInfoMessage("Everything is fine ✅", 3000);
       }
     } catch (e) {
       if (e instanceof Error) {
@@ -263,6 +341,8 @@ function validate(
     }
 
     diagnosticCollection.set(document.uri, diagnostics);
+    updateStatusBarItem(); // Update status bar color based on errors
+
   });
 }
 
