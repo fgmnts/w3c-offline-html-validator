@@ -8,7 +8,7 @@ import * as https from "https";
 
 let extPath: string | null = null;
 
-function showTimedInfoMessage(message, duration) {
+function showTimedInfoMessage(message: string, duration: number) {
   const infoMessage = vscode.window.showInformationMessage(message);
   
   // Set timeout to automatically close the message after 'duration' milliseconds
