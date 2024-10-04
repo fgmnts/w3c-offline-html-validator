@@ -2,19 +2,24 @@
 
 Because the og validator doesn't work
 
+All needed binaries are included in this package.
+
 ## Features
 
 Offline W3C validation
 
+Auto validate on save
 
 ## Requirements
 
+None
 
 ## Extension Settings
 
-This extension contributes the following settings:
+None so far
+<!-- This extension contributes the following settings:
 
-* `htmlValidator.vnuJarPath`: Path to vnu.jar
+* `htmlValidator.vnuJarPath`: Path to vnu.jar -->
 
 ## Known Issues
 
