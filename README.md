@@ -28,13 +28,24 @@ A Visual Studio Code extension that provides offline HTML validation using W3C s
 - **Offline HTML Validation**: Validate your HTML files using W3C standards without needing an internet connection.
 - **Automatic Validation on Save**: Automatically validates HTML files every time you save them.
 - **Status Bar Integration**:
-  - Clickable icon to enable or disable validation on save.
+  - **Clickable Icon**: Easily enable or disable validation on save by clicking the status bar item.
+  - **Error and Warning Indicators**:
+    - **Background Colors**:
+      - **Red Background**: Validation errors detected.
+      - **Green Background**: Validation passed with no errors or warnings.
+      - **Gray Background**: Validation is disabled.
+    - **Icons**:
+      - **$(check)**: Validation is enabled and passed.
+      - **$(error)**: Validation errors detected.
+      - **$(x)**: Validation is disabled.
+  - **Quick Access to Problems Pane**: When errors are present, clicking the status bar item opens the Problems pane.
 - **Error and Warning Diagnostics**:
-  - Validation errors and warnings are displayed in the Problems pane.
-  - Errors and warnings are highlighted directly in the editor.
+  - Validation errors and warnings are displayed in the **Problems** pane.
+  - Errors and warnings are highlighted directly in the editor for easy identification.
 - **Persistent Settings**:
   - Validation state (enabled/disabled) is saved between sessions.
-  - Configuration options are available for advanced users.
+  - Configuration options are available for advanced users to customize the extension behavior.
+
 
 ---
 
@@ -73,6 +84,7 @@ A Visual Studio Code extension that provides offline HTML validation using W3C s
 
 ---
 
+
 ## **Extension Settings**
 
 The extension contributes the following settings:
@@ -82,6 +94,26 @@ The extension contributes the following settings:
    - **Default**: *(Automatically set based on OS)*
    - **Description**: Path to the `vnu` executable file.
    - **Usage**: Advanced users can specify a custom path to the `vnu` executable if needed.
+
+2. **`htmlValidator.showErrorMessages`**:
+   - **Type**: `boolean`
+   - **Default**: `true`
+   - **Description**: Show error messages when validation errors are detected.
+
+3. **`htmlValidator.showWarningMessages`**:
+   - **Type**: `boolean`
+   - **Default**: `true`
+   - **Description**: Show warning messages when validation warnings are detected.
+
+4. **`htmlValidator.showOkMessages`**:
+   - **Type**: `boolean`
+   - **Default**: `true`
+   - **Description**: Show messages when validation passes without errors or warnings.
+
+5. **`htmlValidator.autoOpenProblems`**:
+   - **Type**: `boolean`
+   - **Default**: `true`
+   - **Description**: Automatically open the Problems pane when validation errors are detected.
 
 ---
 
@@ -95,6 +127,25 @@ The extension contributes the following settings:
 ---
 
 ## **Release Notes**
+
+### **0.0.11 - 0.0.13**
+
+- **UI/UX Improvements**:
+  - Added color-coded backgrounds to the status bar item to indicate validation status:
+    - **Green Background**: Validation passed.
+    - **Red Background**: Validation errors detected.
+    - **Gray Background**: Validation is disabled.
+  - Status bar item now provides quick access to the Problems pane when errors are present.
+- **Settings**:
+  - Introduced new settings to control notifications and behavior:
+    - **`htmlValidator.showErrorMessages`**
+    - **`htmlValidator.showWarningMessages`**
+    - **`htmlValidator.showOkMessages`**
+    - **`htmlValidator.autoOpenProblems`**
+- **README.md**:
+  - Updated documentation to reflect new features and settings.
+
+
 
 ### **0.0.10**
 

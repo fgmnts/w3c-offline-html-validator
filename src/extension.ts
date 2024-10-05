@@ -9,25 +9,35 @@ let vnuExecutable: string;
 let isValidationEnabled = true;
 let statusBarItem: vscode.StatusBarItem;
 let hasErrors = false;
+let hasWarnings = false;
+let _context: vscode.ExtensionContext;
 
 export async function activate(context: vscode.ExtensionContext) {
   console.log("Activating HTML Validator extension");
-
+  _context = context;
   // Create diagnostic collection
-  const diagnosticCollection = vscode.languages.createDiagnosticCollection("html-validator");
+  const diagnosticCollection =
+    vscode.languages.createDiagnosticCollection("html-validator");
   context.subscriptions.push(diagnosticCollection);
 
   // Get validation enabled state from global state
-  isValidationEnabled = context.globalState.get<boolean>("htmlValidator.isValidationEnabled", true);
+  isValidationEnabled = context.globalState.get<boolean>(
+    "htmlValidator.isValidationEnabled",
+    true
+  );
 
   // Get the vnuExecutable path from configuration
   const config = vscode.workspace.getConfiguration("htmlValidator");
+ 
+
   vnuExecutable = config.inspect<string>("vnuExecutable")?.globalValue || "";
 
   console.log("vnuExecutable path:", vnuExecutable);
 
   if (!vnuExecutable) {
-    console.log("No vnuExecutable path found in settings. Determining default path based on OS.");
+    console.log(
+      "No vnuExecutable path found in settings. Determining default path based on OS."
+    );
     let extensionPath = context.extensionPath;
 
     if (os.platform() === "win32") {
@@ -42,13 +52,34 @@ export async function activate(context: vscode.ExtensionContext) {
 
     switch (os.platform()) {
       case "darwin": // macOS
-        vnuExecutable = path.join(extensionPath, "validator", "vnu.osx", "vnu-runtime-image", "bin", "vnu");
+        vnuExecutable = path.join(
+          extensionPath,
+          "validator",
+          "vnu.osx",
+          "vnu-runtime-image",
+          "bin",
+          "vnu"
+        );
         break;
       case "win32": // Windows
-        vnuExecutable = path.join(extensionPath, "validator", "vnu.windows", "vnu-runtime-image", "bin", "vnu.bat");
+        vnuExecutable = path.join(
+          extensionPath,
+          "validator",
+          "vnu.windows",
+          "vnu-runtime-image",
+          "bin",
+          "vnu.bat"
+        );
         break;
       case "linux": // Linux
-        vnuExecutable = path.join(extensionPath, "validator", "vnu.linux", "vnu-runtime-image", "bin", "vnu");
+        vnuExecutable = path.join(
+          extensionPath,
+          "validator",
+          "vnu.linux",
+          "vnu-runtime-image",
+          "bin",
+          "vnu"
+        );
         break;
       default:
         vscode.window.showErrorMessage("Unsupported OS platform.");
@@ -56,11 +87,18 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     // Update the configuration with the determined vnuExecutable path
-    await config.update("vnuExecutable", vnuExecutable, vscode.ConfigurationTarget.Global);
+    await config.update(
+      "vnuExecutable",
+      vnuExecutable,
+      vscode.ConfigurationTarget.Global
+    );
   }
 
   // Create the status bar item
-  statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, -100);
+  statusBarItem = vscode.window.createStatusBarItem(
+    vscode.StatusBarAlignment.Left,
+    -100
+  );
   statusBarItem.command = "htmlValidator.toggleValidation";
   context.subscriptions.push(statusBarItem);
 
@@ -68,24 +106,30 @@ export async function activate(context: vscode.ExtensionContext) {
   updateStatusBarItem();
 
   // Register the toggle validation command
-  const toggleValidationCommand = vscode.commands.registerCommand("htmlValidator.toggleValidation", () => {
-    isValidationEnabled = !isValidationEnabled;
-    updateStatusBarItem();
-    context.globalState.update("htmlValidator.isValidationEnabled", isValidationEnabled);
+  const toggleValidationCommand = vscode.commands.registerCommand(
+    "htmlValidator.toggleValidation",
+    () => {
+      isValidationEnabled = !isValidationEnabled;
+      updateStatusBarItem();
+      context.globalState.update(
+        "htmlValidator.isValidationEnabled",
+        isValidationEnabled
+      );
 
-    if (!isValidationEnabled) {
-      // Clear diagnostics if validation is disabled
-      diagnosticCollection.clear();
-    } else {
-      // Re-validate the active document if validation is enabled
-      if (vscode.window.activeTextEditor) {
-        const document = vscode.window.activeTextEditor.document;
-        if (document.languageId === "html") {
-          validate(document, diagnosticCollection);
+      if (!isValidationEnabled) {
+        // Clear diagnostics if validation is disabled
+        diagnosticCollection.clear();
+      } else {
+        // Re-validate the active document if validation is enabled
+        if (vscode.window.activeTextEditor) {
+          const document = vscode.window.activeTextEditor.document;
+          if (document.languageId === "html") {
+            validate(document, diagnosticCollection);
+          }
         }
       }
     }
-  });
+  );
   context.subscriptions.push(toggleValidationCommand);
 
   // Validate the active editor's document if it's an HTML file
@@ -122,16 +166,41 @@ export function deactivate() {
 }
 
 function updateStatusBarItem() {
+  if (statusBarItem) {
+    statusBarItem.hide();
+    statusBarItem.dispose();
+  }
+
+  statusBarItem = vscode.window.createStatusBarItem(
+    vscode.StatusBarAlignment.Left,
+    -100
+  );
+  statusBarItem.command = "htmlValidator.toggleValidation";
+  _context.subscriptions.push(statusBarItem);
+
+  statusBarItem.text = `$(check) HTML Validator`;
   if (isValidationEnabled) {
-    statusBarItem.text = `$(check) HTML Validator`;
     statusBarItem.tooltip = "Click to disable HTML validation on save";
-    statusBarItem.color = hasErrors ? new vscode.ThemeColor("statusBarItem.errorForeground") : undefined;
-    statusBarItem.backgroundColor = undefined;
+    statusBarItem.backgroundColor = hasErrors
+      ? new vscode.ThemeColor("statusBarItem.errorBackground")
+      : hasWarnings
+      ? new vscode.ThemeColor("statusBarItem.warningBackground")
+      : undefined;
+    statusBarItem.color = hasErrors
+      ? new vscode.ThemeColor("statusBarItem.errorForeground")
+      : hasWarnings
+      ? new vscode.ThemeColor("statusBarItem.warningForeground")
+      : undefined;
   } else {
     statusBarItem.text = `$(x) HTML Validator (Disabled)`;
     statusBarItem.tooltip = "Click to enable HTML validation on save";
-    statusBarItem.color = new vscode.ThemeColor("statusBarItem.inactiveForeground");
-    statusBarItem.backgroundColor = new vscode.ThemeColor("statusBarItem.inactiveBackground");
+    statusBarItem.color = new vscode.ThemeColor(
+      "statusBarItem.inactiveForeground"
+    );
+    statusBarItem.backgroundColor = new vscode.ThemeColor(
+      "statusBarItem.inactiveBackground"
+    );
+    statusBarItem.color = undefined;
   }
   statusBarItem.show();
 }
@@ -146,26 +215,41 @@ function removeLeadingSlashOrBackslash(str: string) {
   return str;
 }
 
-
-function showTimedMessage(message: string, duration: number, type: 'info' | 'warning' | 'error') {
+function showTimedMessage(
+  message: string,
+  duration: number,
+  type: "info" | "warning" | "error"
+) {
   let messagePromise: Thenable<string | undefined>;
+  // Fetch configuration values
+  const config = vscode.workspace.getConfiguration('htmlValidator');
+  const showErrorMessages = config.get<boolean>('showErrorMessages', true);
+  const showWarningMessages = config.get<boolean>('showWarningMessages', true);
+  const showOkMessages = config.get<boolean>('showOkMessages', true);
 
   switch (type) {
-    case 'info':
-      messagePromise = vscode.window.showInformationMessage(message);
+    case "info":
+      if (showOkMessages) {
+        messagePromise = vscode.window.showInformationMessage(message);
+      }
       break;
-    case 'warning':
-      messagePromise = vscode.window.showWarningMessage(message);
+    case "warning":
+      if (showWarningMessages) {
+        messagePromise = vscode.window.showWarningMessage(message);
+      }
       break;
-    case 'error':
-      messagePromise = vscode.window.showErrorMessage(message);
+    case "error":
+      if (showErrorMessages) {
+        messagePromise = vscode.window.showErrorMessage(message);
+      }
       break;
   }
-
-  
 }
 
-function validate(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection): void {
+function validate(
+  document: vscode.TextDocument,
+  diagnosticCollection: vscode.DiagnosticCollection
+): void {
   if (!isValidationEnabled) {
     return;
   }
@@ -173,7 +257,9 @@ function validate(document: vscode.TextDocument, diagnosticCollection: vscode.Di
 
   // Check if vnuExecutable exists
   if (!vnuExecutable || !fs.existsSync(vnuExecutable)) {
-    vscode.window.showErrorMessage("vnu executable not found. Expected path: " + vnuExecutable);
+    vscode.window.showErrorMessage(
+      "vnu executable not found. Expected path: " + vnuExecutable
+    );
     return;
   }
 
@@ -220,26 +306,51 @@ function validate(document: vscode.TextDocument, diagnosticCollection: vscode.Di
         } else {
           warningCount++;
         }
-        const diagnostic = new vscode.Diagnostic(range, message.message, severity);
+        const diagnostic = new vscode.Diagnostic(
+          range,
+          message.message,
+          severity
+        );
         diagnostics.push(diagnostic);
       }
       if (severeCount > 0) {
         hasErrors = true;
-        showTimedMessage("One or more ERRORS found, please fix. ⚠️", 2000, 'error');
+        hasWarnings = false;
+        showTimedMessage(
+          "One or more ERRORS found, please fix. ⚠️",
+          2000,
+          "error"
+        );
+  // Fetch configuration values
+  const config = vscode.workspace.getConfiguration('htmlValidator');
+  const autoOpenProblems = config.get<boolean>('autoOpenProblems', true);
+        if (autoOpenProblems) {
+          vscode.commands.executeCommand("workbench.actions.view.problems");
+        }
       } else if (warningCount > 0) {
         hasErrors = false;
-        showTimedMessage("One or more warnings found. 🙃", 2000, 'warning');
+        hasWarnings = true;
+        showTimedMessage("One or more warnings found. 🙃", 2000, "warning");
       } else {
         hasErrors = false;
-        showTimedMessage("Everything is fine ✅ ", 2000, 'info');
+        hasWarnings = false;
+        showTimedMessage("Everything is fine ✅ ", 2000, "info");
       }
     } catch (e) {
       if (e instanceof Error) {
-        vscode.window.showErrorMessage("Failed to parse validator output: " + e.message);
-        outputChannel.appendLine("Failed to parse validator output: " + e.message);
+        vscode.window.showErrorMessage(
+          "Failed to parse validator output: " + e.message
+        );
+        outputChannel.appendLine(
+          "Failed to parse validator output: " + e.message
+        );
       } else {
-        vscode.window.showErrorMessage("Failed to parse validator output: Unknown error");
-        outputChannel.appendLine("Failed to parse validator output: Unknown error");
+        vscode.window.showErrorMessage(
+          "Failed to parse validator output: Unknown error"
+        );
+        outputChannel.appendLine(
+          "Failed to parse validator output: Unknown error"
+        );
       }
       outputChannel.appendLine("Validator Output: " + stderr);
       return;
