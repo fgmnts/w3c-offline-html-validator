@@ -128,6 +128,11 @@ The extension contributes the following settings:
 
 ## **Release Notes**
 
+### **0.0.14**
+
+- **Notifications**:
+  - Auto hide notifications
+
 ### **0.0.11 - 0.0.13**
 
 - **UI/UX Improvements**:
