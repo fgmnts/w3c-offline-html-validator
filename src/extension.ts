@@ -215,35 +215,39 @@ function removeLeadingSlashOrBackslash(str: string) {
   return str;
 }
 
-function showTimedMessage(
+async function showTimedMessage(
   message: string,
-  duration: number,
+  timeout: number,
   type: "info" | "warning" | "error"
 ) {
-  let messagePromise: Thenable<string | undefined>;
-  // Fetch configuration values
-  const config = vscode.workspace.getConfiguration('htmlValidator');
-  const showErrorMessages = config.get<boolean>('showErrorMessages', true);
-  const showWarningMessages = config.get<boolean>('showWarningMessages', true);
-  const showOkMessages = config.get<boolean>('showOkMessages', true);
 
+
+  // Add an emoji or icon based on the type
+  let icon = "";
   switch (type) {
     case "info":
-      if (showOkMessages) {
-        messagePromise = vscode.window.showInformationMessage(message);
-      }
+      icon = "ℹ️"; // Information icon
       break;
     case "warning":
-      if (showWarningMessages) {
-        messagePromise = vscode.window.showWarningMessage(message);
-      }
+      icon = "⚠️"; // Warning icon
       break;
     case "error":
-      if (showErrorMessages) {
-        messagePromise = vscode.window.showErrorMessage(message);
-      }
+      icon = "❌"; // Error icon
       break;
   }
+
+  const fullMessage = `${message} ${icon}${icon}`;
+
+  vscode.window.withProgress(
+    {
+      location: vscode.ProgressLocation.Notification,
+      title: fullMessage,
+      cancellable: false,
+    },
+    async () => {
+      await new Promise((resolve) => setTimeout(resolve, timeout));
+    }
+  );
 }
 
 function validate(
@@ -317,7 +321,7 @@ function validate(
         hasErrors = true;
         hasWarnings = false;
         showTimedMessage(
-          "One or more ERRORS found, please fix. ⚠️",
+          "One or more ERRORS found, please fix.",
           2000,
           "error"
         );
@@ -330,11 +334,11 @@ function validate(
       } else if (warningCount > 0) {
         hasErrors = false;
         hasWarnings = true;
-        showTimedMessage("One or more warnings found. 🙃", 2000, "warning");
+        showTimedMessage("One or more warnings found.", 2000, "warning");
       } else {
         hasErrors = false;
         hasWarnings = false;
-        showTimedMessage("Everything is fine ✅ ", 2000, "info");
+        showTimedMessage("Everything is fine", 2000, "info");
       }
     } catch (e) {
       if (e instanceof Error) {
