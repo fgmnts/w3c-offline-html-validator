@@ -115,6 +115,16 @@ The extension contributes the following settings:
    - **Default**: `true`
    - **Description**: Automatically open the Problems pane when validation errors are detected.
 
+6. **`htmlValidator.noStream`**:
+   - **Type**: `boolean`
+   - **Default**: `false`
+   - **Description**: VNU option: Forces all documents to be be parsed in buffered mode instead of streaming mode (causes some parse errors to be treated as non-fatal document errors instead of as fatal document errors).
+
+7. **`htmlValidator.noLangDetect`**:
+   - **Type**: `boolean`
+   - **Default**: `false`
+   - **Description**: VNU option: Disables language detection, so that documents are not checked for missing or mislabeled html[lang] attributes.
+
 ---
 
 ## **Known Issues**
@@ -147,6 +157,8 @@ The extension contributes the following settings:
     - **`htmlValidator.showWarningMessages`**
     - **`htmlValidator.showOkMessages`**
     - **`htmlValidator.autoOpenProblems`**
+    - **`htmlValidator.noStream`**
+    - **`htmlValidator.noLangDetect`**
 - **README.md**:
   - Updated documentation to reflect new features and settings.
 

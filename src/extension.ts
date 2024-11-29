@@ -28,7 +28,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Get the vnuExecutable path from configuration
   const config = vscode.workspace.getConfiguration("htmlValidator");
- 
+
 
   vnuExecutable = config.inspect<string>("vnuExecutable")?.globalValue || "";
 
@@ -268,10 +268,17 @@ function validate(
   }
 
   const filePath = document.uri.fsPath;
-  const args = ["--format", "json", "--exit-zero-always", filePath];
+  const config = vscode.workspace.getConfiguration("htmlValidator");
+
+  const noStream = config.get<boolean>("noStream", true);
+  const noLangDetect = config.get<boolean>("noLangDetect", true);
+  console.log({ noStream, noLangDetect });
+  const args = ["--format", "json", "--exit-zero-always", noStream ? '--no-stream':'', noLangDetect ? '--no-langdetect':'', noStream ? '--no-stream':'', filePath];
 
   const outputChannel = vscode.window.createOutputChannel("HTML Validator");
   outputChannel.clear();
+
+  // --no-stream
 
   const process = child_process.spawn(vnuExecutable, args, { shell: true });
 
@@ -325,9 +332,8 @@ function validate(
           2000,
           "error"
         );
-  // Fetch configuration values
-  const config = vscode.workspace.getConfiguration('htmlValidator');
-  const autoOpenProblems = config.get<boolean>('autoOpenProblems', true);
+        // Fetch configuration values
+        const autoOpenProblems = config.get<boolean>("autoOpenProblems", true);
         if (autoOpenProblems) {
           vscode.commands.executeCommand("workbench.actions.view.problems");
         }

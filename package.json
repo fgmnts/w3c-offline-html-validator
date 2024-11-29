@@ -2,7 +2,7 @@
   "name": "w3c-offline-html-validator",
   "displayName": "W3C Offline HTML Validator",
   "description": "A VSCode extension for offline HTML validation using W3C standards.",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "icon": "icon.jpg",
   "engines": {
     "vscode": "^1.93.0"
@@ -51,6 +51,16 @@
           "type": "boolean",
           "default": true,
           "description": "Automatically open the Problems pane when there are validation errors."
+        },
+        "htmlValidator.noStream": {
+          "type": "boolean",
+          "default": false,
+          "description": "VNU option: Forces all documents to be be parsed in buffered mode instead of streaming mode (causes some parse errors to be treated as non-fatal document errors instead of as fatal document errors)."
+        },
+        "htmlValidator.noLangDetect": {
+          "type": "boolean",
+          "default": false,
+          "description": "VNU option: Disables language detection, so that documents are not checked for missing or mislabeled html[lang] attributes."
         }
       }
     }
