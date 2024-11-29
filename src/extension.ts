@@ -1,9 +1,161 @@
 // src/extension.ts
 import * as vscode from "vscode";
-import * as child_process from "child_process";
 import * as path from "path";
 import * as fs from "fs";
 import * as os from "os";
+import * as https from "https";
+import AdmZip from "adm-zip";
+import { exec, spawn, execSync } from "child_process";
+
+// Configuration
+// path.resolve(__dirname, 'vnu-bin');
+const ARCH_MAP: { [key: string]: string } = {
+  linux: 'https://github.com/validator/validator/releases/download/latest/vnu.linux.zip',
+  darwin: 'https://github.com/validator/validator/releases/download/latest/vnu.osx.zip',
+  win32: 'https://github.com/validator/validator/releases/download/latest/vnu.windows.zip'
+};
+function isJavaInstalled(): boolean {
+  try {
+    const output = execSync("java -version", { stdio: "pipe" }).toString();
+    console.log("Java is installed:", output);
+    return true;
+  } catch (error) {
+    console.error("Java is not installed or not in PATH.");
+    return false;
+  }
+}
+function getPlatformArch(): string {
+  const platform = os.platform();
+  const arch = os.arch();
+
+  const url = ARCH_MAP[platform];
+  if (url) {
+    return url; // arch === 'x64' ? key : `${key}-${arch}`;
+  }
+
+  throw new Error(`Unsupported platform/architecture: ${platform}/${arch}`);
+}
+
+function checkBinaryExists(dir: string): boolean {
+  return fs.existsSync(path.join(dir, 'vnu.jar'));
+}
+
+function downloadFile(url: string, dest: string, maxRedirects: number = 5): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const file = fs.createWriteStream(dest);
+
+    const fetchFile = (currentUrl: string, redirectsLeft: number) => {
+      https.get(currentUrl, { headers: { 'User-Agent': 'Node.js' } }, (response) => {
+        const { statusCode, headers } = response;
+
+        if (statusCode && statusCode >= 300 && statusCode < 400 && headers.location) {
+          if (redirectsLeft === 0) {
+            return reject(new Error('Too many redirects.'));
+          }
+          // Follow the redirect
+          fetchFile(headers.location, redirectsLeft - 1);
+        } else if (statusCode === 200) {
+          // Write the response to the file
+          response.pipe(file);
+          file.on('finish', async () => {
+            console.log("Download completed");
+            await new Promise((a, r) => file.close(a));
+            resolve();
+          });
+        } else {
+          // Handle other errors
+          reject(new Error(`Failed to download file: ${statusCode}`));
+        }
+      }).on('error', (err) => {
+        file.close(() => {
+          fs.unlink(dest, (unlinkErr) => {
+            if (unlinkErr) {
+              console.error('Error removing incomplete file:', unlinkErr);
+            }
+            reject(err);
+          });
+        });
+      });
+    };
+
+    fetchFile(url, maxRedirects);
+  });
+}
+
+
+function extractArchive(archivePath: string, extractTo: string): void {
+  if (archivePath.endsWith(".zip")) {
+    console.log('Extracting ZIP file...');
+    const zip = new AdmZip(archivePath);
+    zip.extractAllTo(extractTo, true);
+    console.log('Extraction completed.');
+  } else if (archivePath.endsWith(".tar.gz")) {
+    console.log('Extracting TAR.GZ file...');
+    const command = `tar -xzf "${archivePath}" -C "${extractTo}"`;
+    exec(command, (err) => {
+      if (err) {
+        throw new Error(`Extraction failed: ${err.message}`);
+      }
+      console.log('Extraction completed.');
+    });
+  } else {
+    throw new Error(`Unsupported archive format: ${archivePath}`);
+  }
+}
+
+function makeExecutable(filePath: string): void {
+  try {
+    fs.chmodSync(filePath, 0o755); // Sets the executable bit for the owner, group, and others
+    fs.chmodSync(filePath.replace("bin/vnu", "bin/java"), 0o755); // Sets the executable bit for the owner, group, and others
+    fs.chmodSync(path.resolve(path.dirname(filePath)), 0o755); // Sets the executable bit for the owner, group, and others
+    console.log(`Made ${filePath} and ${path.resolve(path.dirname(filePath))} and ${filePath.replace("bin/vnu", "bin/java")} executable.`);
+  } catch (err: any) {
+    throw new Error(`Failed to make file executable: ${err?.message}`);
+  }
+}
+export async function downloadVnu(config: vscode.WorkspaceConfiguration, DOWNLOAD_DIR: string): Promise<void> {
+  console.log({ DOWNLOAD_DIR });
+  if (!fs.existsSync(DOWNLOAD_DIR)) {
+    fs.mkdirSync(DOWNLOAD_DIR, { recursive: true });
+  }
+
+  if (checkBinaryExists(DOWNLOAD_DIR)) {
+    console.log('vnu binary already exists. Skipping download.');
+    return;
+  }
+
+  console.log('Fetching latest vnu release info...');
+  const platformUrl = getPlatformArch();
+  console.log({ platformUrl });
+
+  const outputFile = path.join(DOWNLOAD_DIR, "vnu-latest.zip");
+
+  await downloadFile(platformUrl, outputFile);
+
+  console.log('Extracting binary...');
+  extractArchive(outputFile, DOWNLOAD_DIR);
+  console.log('vnu binary downloaded and extracted successfully.');
+  fs.rmSync(outputFile);
+  console.log('vnu-latest.zip deleted.');
+
+  const newVnuExecutable = path.join(DOWNLOAD_DIR, "vnu-runtime-image", "bin", "vnu", os.arch() === "win32" ? ".bat" : '');
+  if (os.arch() === "win32") {
+
+    makeExecutable(newVnuExecutable);
+    console.log('makeExecutable');
+  }
+
+  await config.update(
+    "vnuExecutable",
+    newVnuExecutable,
+    vscode.ConfigurationTarget.Global
+  );
+  vnuExecutable = newVnuExecutable;
+  console.log({ newVnuExecutable });
+
+
+}
+
 
 let vnuExecutable: string;
 let isValidationEnabled = true;
@@ -11,6 +163,8 @@ let statusBarItem: vscode.StatusBarItem;
 let hasErrors = false;
 let hasWarnings = false;
 let _context: vscode.ExtensionContext;
+
+
 
 export async function activate(context: vscode.ExtensionContext) {
   console.log("Activating HTML Validator extension");
@@ -29,7 +183,10 @@ export async function activate(context: vscode.ExtensionContext) {
   // Get the vnuExecutable path from configuration
   const config = vscode.workspace.getConfiguration("htmlValidator");
 
-
+  if (!isJavaInstalled()) {
+    vscode.window.showErrorMessage("JRE must be installed.");
+    return;
+  }
   vnuExecutable = config.inspect<string>("vnuExecutable")?.globalValue || "";
 
   console.log("vnuExecutable path:", vnuExecutable);
@@ -106,6 +263,17 @@ export async function activate(context: vscode.ExtensionContext) {
   updateStatusBarItem();
 
   // Register the toggle validation command
+  const downloadVnuCommand = vscode.commands.registerCommand(
+    "htmlValidator.downloadVnu",
+    () => {
+      let extensionPath = context.extensionPath;
+
+      downloadVnu(config, path.resolve(path.join(
+        extensionPath,
+        "validator",
+      )));
+    });
+  // Register the toggle validation command
   const toggleValidationCommand = vscode.commands.registerCommand(
     "htmlValidator.toggleValidation",
     () => {
@@ -131,7 +299,7 @@ export async function activate(context: vscode.ExtensionContext) {
     }
   );
   context.subscriptions.push(toggleValidationCommand);
-
+  context.subscriptions.push(downloadVnuCommand);
   // Validate the active editor's document if it's an HTML file
   if (vscode.window.activeTextEditor) {
     const document = vscode.window.activeTextEditor.document;
@@ -184,13 +352,13 @@ function updateStatusBarItem() {
     statusBarItem.backgroundColor = hasErrors
       ? new vscode.ThemeColor("statusBarItem.errorBackground")
       : hasWarnings
-      ? new vscode.ThemeColor("statusBarItem.warningBackground")
-      : undefined;
+        ? new vscode.ThemeColor("statusBarItem.warningBackground")
+        : undefined;
     statusBarItem.color = hasErrors
       ? new vscode.ThemeColor("statusBarItem.errorForeground")
       : hasWarnings
-      ? new vscode.ThemeColor("statusBarItem.warningForeground")
-      : undefined;
+        ? new vscode.ThemeColor("statusBarItem.warningForeground")
+        : undefined;
   } else {
     statusBarItem.text = `$(x) HTML Validator (Disabled)`;
     statusBarItem.tooltip = "Click to enable HTML validation on save";
@@ -273,14 +441,14 @@ function validate(
   const noStream = config.get<boolean>("noStream", true);
   const noLangDetect = config.get<boolean>("noLangDetect", true);
   console.log({ noStream, noLangDetect });
-  const args = ["--format", "json", "--exit-zero-always", noStream ? '--no-stream':'', noLangDetect ? '--no-langdetect':'', noStream ? '--no-stream':'', filePath];
+  const args = ["--format", "json", "--exit-zero-always", noStream ? '--no-stream' : '', noLangDetect ? '--no-langdetect' : '', noStream ? '--no-stream' : '', filePath];
 
   const outputChannel = vscode.window.createOutputChannel("HTML Validator");
   outputChannel.clear();
 
   // --no-stream
 
-  const process = child_process.spawn(vnuExecutable, args, { shell: true });
+  const process = spawn(vnuExecutable, args, { shell: true });
 
   let stdout = "";
   let stderr = "";
