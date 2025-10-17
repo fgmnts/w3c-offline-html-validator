@@ -46,7 +46,6 @@ A Visual Studio Code extension that provides offline HTML validation using W3C s
   - Validation state (enabled/disabled) is saved between sessions.
   - Configuration options are available for advanced users to customize the extension behavior.
 
-
 ---
 
 ## **Requirements**
@@ -60,6 +59,7 @@ A Visual Studio Code extension that provides offline HTML validation using W3C s
 ## **Installation**
 
 1. **Install the Extension**:
+
    - Search for **"W3C Offline HTML Validator"** in the VSCode Extensions Marketplace.
    - Click **Install**.
 
@@ -84,38 +84,43 @@ A Visual Studio Code extension that provides offline HTML validation using W3C s
 
 ---
 
-
 ## **Extension Settings**
 
 The extension contributes the following settings:
 
 1. **`htmlValidator.vnuExecutable`**:
+
    - **Type**: `string`
-   - **Default**: *(Automatically set based on OS)*
+   - **Default**: _(Automatically set based on OS)_
    - **Description**: Path to the `vnu` executable file.
    - **Usage**: Advanced users can specify a custom path to the `vnu` executable if needed.
 
 2. **`htmlValidator.showErrorMessages`**:
+
    - **Type**: `boolean`
    - **Default**: `true`
    - **Description**: Show error messages when validation errors are detected.
 
 3. **`htmlValidator.showWarningMessages`**:
+
    - **Type**: `boolean`
    - **Default**: `true`
    - **Description**: Show warning messages when validation warnings are detected.
 
 4. **`htmlValidator.showOkMessages`**:
+
    - **Type**: `boolean`
    - **Default**: `true`
    - **Description**: Show messages when validation passes without errors or warnings.
 
 5. **`htmlValidator.autoOpenProblems`**:
+
    - **Type**: `boolean`
    - **Default**: `true`
    - **Description**: Automatically open the Problems pane when validation errors are detected.
 
 6. **`htmlValidator.noStream`**:
+
    - **Type**: `boolean`
    - **Default**: `false`
    - **Description**: VNU option: Forces all documents to be be parsed in buffered mode instead of streaming mode (causes some parse errors to be treated as non-fatal document errors instead of as fatal document errors).
@@ -162,8 +167,6 @@ The extension contributes the following settings:
 - **README.md**:
   - Updated documentation to reflect new features and settings.
 
-
-
 ### **0.0.10**
 
 - **Refactor**
@@ -192,21 +195,31 @@ The extension contributes the following settings:
 
 Contributions are welcome! Please follow these steps:
 
+0. **Install VSCE**:
+
+   ```bash
+   npm install -g @vscode/vsce
+   ```
+
 1. **Fork the Repository**:
+
    - Visit the [GitHub repository](https://github.com/fgmnts/w3c-offline-html-validator) and fork it.
 
 2. **Clone Your Fork**:
+
    ```bash
    git clone https://github.com/your-username/w3c-offline-html-validator.git
    ```
 
 3. **Install Dependencies**:
+
    ```bash
    cd w3c-offline-html-validator
    npm install
    ```
 
 4. **Development Workflow**:
+
    - **Use Node.js Version 20**:
      ```bash
      nvm use 20

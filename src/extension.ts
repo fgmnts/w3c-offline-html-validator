@@ -273,14 +273,19 @@ function validate(
   const noStream = config.get<boolean>("noStream", true);
   const noLangDetect = config.get<boolean>("noLangDetect", true);
   console.log({ noStream, noLangDetect });
-  const args = ["--format", "json", "--exit-zero-always", noStream ? '--no-stream':'', noLangDetect ? '--no-langdetect':'', noStream ? '--no-stream':'', filePath];
+  
+  // Quote paths to handle spaces safely on Windows
+  const quotedFilePath = `"${filePath}"`;
+  const args = ["--format", "json", "--exit-zero-always", noStream ? '--no-stream':'', noLangDetect ? '--no-langdetect':'', noStream ? '--no-stream':'', quotedFilePath];
 
   const outputChannel = vscode.window.createOutputChannel("HTML Validator");
   outputChannel.clear();
 
   // --no-stream
 
-  const process = child_process.spawn(vnuExecutable, args, { shell: true });
+  // Quote the vnu executable path for safe command execution
+  const quotedVnuExecutable = `"${vnuExecutable}"`;
+  const process = child_process.spawn(quotedVnuExecutable, args, { shell: true });
 
   let stdout = "";
   let stderr = "";
