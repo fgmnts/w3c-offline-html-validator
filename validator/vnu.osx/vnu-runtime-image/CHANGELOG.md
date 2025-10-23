@@ -2,33 +2,6 @@ With a few exceptions, this is a record of mainly just user-facing
 changes — that is, either changes to the actual behavior of the checker,
 or changes to any options/interfaces the checker exposes for developers.
 
-# NN.NN.NN
-NN XXX NNNN
-  - Require Java 11; stop supporting Java 8
-  - Report void elements that have a trailing slash in their start tags
-  - Skip template contents when checking for duplicate IDs (bug fix)
-  - Allow `loading` attribute for the `iframe` element (lazy loading)
-  - Allow `autocomplete=username` with `input[type=email]`
-  - Allow `operator=lighter` for SVG `feComposite` element
-  - Allow more values for SVG `feBlend` element `mode` attribute
-  - Allow non-JS MIME types for `script` elements with `src` attributes
-  - Fix bug in handling of (non)reporting of invalid named character refs
-  - CLI: Add nu.validator.htmlparser.tools|test classes to vnu.jar
-  - CLI: Add new `--xml` option, to force parsing using the XML parser
-  - CLI/Docker: Enable setting timeouts & bind address w/ environment vars
-  - CSS: Support color-adjust
-  - Docker: Migrate Dockerfile to “distroless” image (reduces image size)
-  - ARIA: Added many changes to align with current ARIA in HTML and ARIA specs
-  - Update doc-fetching backend to Apache HTTP Components HttpClient 4.5.9
-  - Make the checker use HTTP 1.0 for all requests it sends, not HTTP 1.1
-  - Make the checker ignore error for malformed/missing HTTP closing chunk
-  - Release: All autopublished-on-push release artifacts are now released
-    under the tag `latest`; no more `jar`, `war`, `windows`, `linux`, `osx`
-  - Docker: Image moved to https://ghcr.io/validator/validator
-  - NPMs now released to GitHub Packages, in addition to npmjs.com
-  - Maven packages now released to GitHub Packages, in addition to Central
-  - Add --additional-java-system-properties option for build script
-
 # 20.6.30
 30 June 2020
   - CLI: Add new `--stdout` option, to report all messages to stdout
