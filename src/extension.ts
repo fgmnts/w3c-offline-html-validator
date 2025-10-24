@@ -17,7 +17,7 @@ let globalWarningCount = 0;
 
 
 export async function activate(context: vscode.ExtensionContext) {
-  console.log("Activating HTML Validator extension");
+  console.log("Activating W3C Offline HTML Validator extension");
   _context = context;
   // Create diagnostic collection
   const diagnosticCollection =
@@ -79,6 +79,8 @@ export async function activate(context: vscode.ExtensionContext) {
       vscode.window.showErrorMessage("Unsupported OS platform.");
       return;
   }
+
+  console.log("Offline W3C bin", vnuExecutable);
 
 
   // Create the status bar item
@@ -144,7 +146,7 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(vscode.workspace.onDidCloseTextDocument((document) => {
     diagnosticCollection.delete(document.uri);
   }));
-  console.log("HTML Validator extension activated");
+  console.log("W3C Offline HTML Validator extension activated");
 }
 
 export function deactivate() {
@@ -172,21 +174,21 @@ function updateStatusBarItem() {
     else if (hasErrors && globalErrorCount > 0) {
       // Errors found - red background with count
       statusBarItem.text = `W3C: ${globalErrorCount} error${globalErrorCount !== 1 ? 's' : ''}`;
-      statusBarItem.tooltip = `W3C HTML Validator - ${globalErrorCount} validation error${globalErrorCount !== 1 ? 's' : ''} found`;
+      statusBarItem.tooltip = `W3C W3C Offline HTML Validator - ${globalErrorCount} validation error${globalErrorCount !== 1 ? 's' : ''} found`;
       statusBarItem.backgroundColor = new vscode.ThemeColor("statusBarItem.errorBackground");
       statusBarItem.color = new vscode.ThemeColor("statusBarItem.errorForeground");
     }
     else if (hasWarnings && globalWarningCount > 0) {
       // Warnings found - yellow background with count
       statusBarItem.text = `W3C: ${globalWarningCount} warning${globalWarningCount !== 1 ? 's' : ''}`;
-      statusBarItem.tooltip = `W3C HTML Validator - ${globalWarningCount} validation warning${globalWarningCount !== 1 ? 's' : ''} found`;
+      statusBarItem.tooltip = `W3C W3C Offline HTML Validator - ${globalWarningCount} validation warning${globalWarningCount !== 1 ? 's' : ''} found`;
       statusBarItem.backgroundColor = new vscode.ThemeColor("statusBarItem.warningBackground");
       statusBarItem.color = new vscode.ThemeColor("statusBarItem.warningForeground");
     }
     else if (hasValidated) {
       // Success case - green background
       statusBarItem.text = "W3C: OK";
-      statusBarItem.tooltip = "W3C HTML Validator - No validation issues";
+      statusBarItem.tooltip = "W3C W3C Offline HTML Validator - No validation issues";
       statusBarItem.backgroundColor = new vscode.ThemeColor("testing.iconPassed"); // Green from VS Code theme
       statusBarItem.color = undefined; // Use default text color
     }
