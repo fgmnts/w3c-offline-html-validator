@@ -15,9 +15,17 @@ let hasValidated = false;
 let globalErrorCount = 0;
 let globalWarningCount = 0;
 
+let enableDebugLogging = false;
+const logTag = "W3C-OHV";
+
+function log(...args: any[]) {
+  if (enableDebugLogging) {
+    console.log.apply(console, [logTag, ...args]);
+  }
+}
 
 export async function activate(context: vscode.ExtensionContext) {
-  console.log("Activating W3C Offline HTML Validator extension");
+  log("Activating W3C Offline HTML Validator extension");
   _context = context;
   // Create diagnostic collection
   const diagnosticCollection =
@@ -33,6 +41,7 @@ export async function activate(context: vscode.ExtensionContext) {
   // Get the vnuExecutable path from configuration
   const config = vscode.workspace.getConfiguration("offlineW3C");
   let extensionPath = context.extensionPath;
+  enableDebugLogging = config.get<boolean>("enableDebugLogging", false);
 
   if (os.platform() === "win32") {
     // On Windows, remove leading slash if present
@@ -80,7 +89,7 @@ export async function activate(context: vscode.ExtensionContext) {
       return;
   }
 
-  console.log("Offline W3C bin", vnuExecutable);
+  log("Offline W3C bin", vnuExecutable);
 
 
   // Create the status bar item
@@ -146,13 +155,13 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(vscode.workspace.onDidCloseTextDocument((document) => {
     diagnosticCollection.delete(document.uri);
   }));
-  console.log("W3C Offline HTML Validator extension activated");
+  log("W3C Offline HTML Validator extension activated");
 }
 
 export function deactivate() {
-    if (statusBarItem) {
-        statusBarItem.dispose();
-    }
+  if (statusBarItem) {
+    statusBarItem.dispose();
+  }
 }
 
 function updateStatusBarItem() {
@@ -227,93 +236,99 @@ function validate(
   diagnosticCollection: vscode.DiagnosticCollection
 ): void {
   if (!isValidationEnabled) {
-        return;
-    }
-    // Check if vnuExecutable exists
-    if (!vnuExecutable || !fs.existsSync(vnuExecutable)) {
-        vscode.window.showErrorMessage("vnu executable not found. Expected path: " + vnuExecutable);
-        return;
-    }
-    const quotedVnuExecutable = `"${vnuExecutable}"`;
-    const filePath = document.uri.fsPath;
-    const config = vscode.workspace.getConfiguration("offlineW3C");
-    const noStream = config.get<boolean>("noStream", true);
-    const noLangDetect = config.get<boolean>("noLangDetect", true);
-    // Quote paths to handle spaces safely on Windows
-    const quotedFilePath = `"${filePath}"`;
-    const args = [
-      "--format", "json",
-      "--exit-zero-always",
-      ...(noStream ? ["--no-stream"] : []),
-      ...(noLangDetect ? ["--no-langdetect"] : []),
-      quotedFilePath
-    ];
-    const process = childProcess.spawn(quotedVnuExecutable, args, { shell: true });
-    let stdout = "";
-    let stderr = "";
-    process.stdout.on("data", (data) => {
-        stdout += data.toString();
-    });
-    process.stderr.on("data", (data) => {
-        stderr += data.toString();
-    });
-    process.on("close", (code) => {
-        const diagnostics = [];
-        try {
-            const result = JSON.parse(stderr);
-            let severeCount = 0;
-            let warningCount = 0;
-            for (const message of result.messages) {
-                const line = Math.max(0, message.lastLine - 1);
-                const col = Math.max(0, message.lastColumn - 1);
-                const range = new vscode.Range(line, col, line, col);
-                const severity = message.type === "error"
-                    ? vscode.DiagnosticSeverity.Error
-                    : vscode.DiagnosticSeverity.Warning;
-                if (severity === vscode.DiagnosticSeverity.Error) {
-                    severeCount++;
-                }
-                else {
-                    warningCount++;
-                }
-                const diagnostic = new vscode.Diagnostic(range, message.message, severity);
-                diagnostics.push(diagnostic);
-            }
-            if (severeCount > 0) {
-                hasErrors = true;
-                hasWarnings = false;
-                hasValidated = true;
-                globalErrorCount = severeCount;
-                globalWarningCount = 0;
-                // Fetch configuration values
-                const autoOpenProblems = config.get<boolean>("autoOpenProblems", false);
-                if (autoOpenProblems) {
-                    // Note: This may still steal focus, so it's disabled by default
-                    vscode.commands.executeCommand("workbench.actions.view.problems");
-                }
-            }
-            else if (warningCount > 0) {
-                hasErrors = false;
-                hasWarnings = true;
-                hasValidated = true;
-                globalErrorCount = 0;
-                globalWarningCount = warningCount; // Store the local warningCount in global variable
-            }
-            else {
-                hasErrors = false;
-                hasWarnings = false;
-                hasValidated = true;
-                globalErrorCount = 0;
-                globalWarningCount = 0;
-            }
+    return;
+  }
+  // Check if vnuExecutable exists
+  if (!vnuExecutable || !fs.existsSync(vnuExecutable)) {
+    vscode.window.showErrorMessage("vnu executable not found. Expected path: " + vnuExecutable);
+    return;
+  }
+  const quotedVnuExecutable = `"${vnuExecutable}"`;
+  const filePath = document.uri.fsPath;
+  const config = vscode.workspace.getConfiguration("offlineW3C");
+  const noStream = config.get<boolean>("noStream", true);
+  const noLangDetect = config.get<boolean>("noLangDetect", true);
+  // Quote paths to handle spaces safely on Windows
+  const quotedFilePath = `"${filePath}"`;
+  const args = [
+    "--format", "json",
+    "--exit-zero-always",
+    ...(noStream ? ["--no-stream"] : []),
+    ...(noLangDetect ? ["--no-langdetect"] : []),
+    "--",
+    filePath
+  ];
+  log(vnuExecutable, args);
+  const process = childProcess.spawn(vnuExecutable, args, { shell: false });
+  let stdout = "";
+  let stderr = "";
+  process.stdout.on("data", (data) => {
+    stdout += data.toString();
+  });
+  process.stderr.on("data", (data) => {
+    stderr += data.toString();
+  });
+  process.on("close", (code) => {
+    const diagnostics = [];
+    try {
+      const result = JSON.parse(stderr);
+      log(result);
+      let severeCount = 0;
+      let warningCount = 0;
+      for (const message of result.messages) {
+        const line = Math.max(0, message.lastLine - 1);
+        const col = Math.max(0, message.lastColumn - 1);
+        const range = new vscode.Range(line, col, line, col);
+        const severity = message.type === "error"
+          ? vscode.DiagnosticSeverity.Error
+          : vscode.DiagnosticSeverity.Warning;
+        if (severity === vscode.DiagnosticSeverity.Error) {
+          severeCount++;
         }
-        catch (e) {
-            const errorMessage = e instanceof Error ? e.message : "Unknown error";
-            vscode.window.showErrorMessage(`Failed to parse validator output: ${errorMessage}`);
-            return;
+        else {
+          warningCount++;
         }
-        diagnosticCollection.set(document.uri, diagnostics);
-        // Update status bar to show current validation state
-        updateStatusBarItem();
-    });
+        const diagnostic = new vscode.Diagnostic(range, message.message, severity);
+        diagnostics.push(diagnostic);
+      }
+      if (severeCount > 0) {
+        log("Errors found", severeCount);
+        hasErrors = true;
+        hasWarnings = false;
+        hasValidated = true;
+        globalErrorCount = severeCount;
+        globalWarningCount = 0;
+        // Fetch configuration values
+        const autoOpenProblems = config.get<boolean>("autoOpenProblems", false);
+        if (autoOpenProblems) {
+          // Note: This may still steal focus, so it's disabled by default
+          vscode.commands.executeCommand("workbench.actions.view.problems");
+        }
+      }
+      else if (warningCount > 0) {
+        log("Warnings found", warningCount);
+        hasErrors = false;
+        hasWarnings = true;
+        hasValidated = true;
+        globalErrorCount = 0;
+        globalWarningCount = warningCount; // Store the local warningCount in global variable
+      }
+      else {
+        log("OK");
+        hasErrors = false;
+        hasWarnings = false;
+        hasValidated = true;
+        globalErrorCount = 0;
+        globalWarningCount = 0;
+      }
+    }
+    catch (e) {
+      const errorMessage = e instanceof Error ? e.message : "Unknown error";
+      vscode.window.showErrorMessage(`Failed to parse validator output: ${errorMessage}`);
+      return;
+    }
+    diagnosticCollection.set(document.uri, diagnostics);
+    // Update status bar to show current validation state
+    updateStatusBarItem();
+  });
 }
