@@ -2,7 +2,7 @@
   "name": "w3c-offline-html-validator",
   "displayName": "W3C Offline HTML Validator",
   "description": "A VSCode extension for offline HTML validation using W3C standards.",
-  "version": "0.0.18",
+  "version": "0.0.20",
   "icon": "icon.jpg",
   "engines": {
     "vscode": "^1.93.0"
@@ -28,11 +28,6 @@
       "type": "object",
       "title": "HTML Validator Settings",
       "properties": {
-        "htmlValidator.vnuExecutable": {
-          "type": "string",
-          "default": "",
-          "description": "Path to the vnu executable file."
-        },
         "htmlValidator.showErrorMessages": {
           "type": "boolean",
           "default": true,
