@@ -53,8 +53,8 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "cp": "npm run vscode:prepublish && vsce package",
-    "cpp": "npm run vscode:prepublish && vsce package && vsce publish",
+    "cp": "npm run vscode:prepublish && vsce package --skip-license",
+    "cpp": "npm run cp && vsce publish --skip-license",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
