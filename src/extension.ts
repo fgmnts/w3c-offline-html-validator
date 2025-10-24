@@ -282,7 +282,7 @@ async function showTimedMessage(
   message: string,
   timeout: number,
   type: "info" | "warning" | "error",
-  count: number
+  count?: number
 ) {
         // Store the original status bar text
         const originalText = statusBarItem.text;
@@ -340,8 +340,8 @@ function validate(
     const quotedVnuExecutable = `"${vnuExecutable}"`;
     const filePath = document.uri.fsPath;
     const config = vscode.workspace.getConfiguration("htmlValidator");
-    const noStream = config.get("noStream", true);
-    const noLangDetect = config.get("noLangDetect", true);
+    const noStream = config.get<boolean>("noStream", true);
+    const noLangDetect = config.get<boolean>("noLangDetect", true);
     console.log({ noStream, noLangDetect });
     // Quote paths to handle spaces safely on Windows
     const quotedFilePath = `"${filePath}"`;
@@ -392,7 +392,7 @@ function validate(
                 globalErrorCount = severeCount;
                 globalWarningCount = 0;
                 // Fetch configuration values
-                const autoOpenProblems = config.get("autoOpenProblems", false);
+                const autoOpenProblems = config.get<boolean>("autoOpenProblems", false);
                 if (autoOpenProblems) {
                     // Note: This may still steal focus, so it's disabled by default
                     vscode.commands.executeCommand("workbench.actions.view.problems");
