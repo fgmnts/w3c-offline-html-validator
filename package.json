@@ -2,7 +2,7 @@
   "name": "w3c-offline-html-validator",
   "displayName": "W3C Offline HTML Validator",
   "description": "A VSCode extension for offline HTML validation using W3C standards.",
-  "version": "0.0.20",
+  "version": "0.1.0",
   "icon": "icon.jpg",
   "engines": {
     "vscode": "^1.93.0"
@@ -63,6 +63,8 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
+    "cp": "npm run vscode:prepublish && vsce package",
+    "cpp": "npm run vscode:prepublish && vsce package && vsce publish",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",

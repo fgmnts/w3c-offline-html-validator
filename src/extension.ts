@@ -1,6 +1,6 @@
 // src/extension.ts
 import * as vscode from "vscode";
-import * as child_process from "child_process";
+import * as childProcess from "child_process";
 import * as path from "path";
 import * as fs from "fs";
 import * as os from "os";
@@ -11,10 +11,7 @@ let statusBarItem: vscode.StatusBarItem;
 let hasErrors = false;
 let hasWarnings = false;
 let _context: vscode.ExtensionContext;
-
-
-
-let hasValidated = false; // Track if validation has been run
+let hasValidated = false;
 let globalErrorCount = 0;
 let globalWarningCount = 0;
 
@@ -35,16 +32,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Get the vnuExecutable path from configuration
   const config = vscode.workspace.getConfiguration("htmlValidator");
-
-
-  // vnuExecutable = config.inspect<string>("vnuExecutable")?.globalValue || "";
-
-  // console.log("vnuExecutable path:", vnuExecutable);
-
-  // if (!vnuExecutable) {
-  //   console.log(
-  //     "No vnuExecutable path found in settings. Determining default path based on OS."
-  //   );
   let extensionPath = context.extensionPath;
 
   if (os.platform() === "win32") {
@@ -93,13 +80,6 @@ export async function activate(context: vscode.ExtensionContext) {
       return;
   }
 
-  //   // Update the configuration with the determined vnuExecutable path
-  //   await config.update(
-  //     "vnuExecutable",
-  //     vnuExecutable,
-  //     vscode.ConfigurationTarget.Global
-  //   );
-  // }
 
   // Create the status bar item
   statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, -100);
@@ -228,45 +208,6 @@ function updateStatusBarItem() {
   statusBarItem.show();
 }
 
-// function updateStatusBarItem() {
-//   if (statusBarItem) {
-//     statusBarItem.hide();
-//     statusBarItem.dispose();
-//   }
-
-//   statusBarItem = vscode.window.createStatusBarItem(
-//     vscode.StatusBarAlignment.Left,
-//     -100
-//   );
-//   statusBarItem.command = "htmlValidator.toggleValidation";
-//   _context.subscriptions.push(statusBarItem);
-
-//   statusBarItem.text = `$(check) HTML Validator`;
-//   if (isValidationEnabled) {
-//     statusBarItem.tooltip = "Click to disable HTML validation on save";
-//     statusBarItem.backgroundColor = hasErrors
-//       ? new vscode.ThemeColor("statusBarItem.errorBackground")
-//       : hasWarnings
-//       ? new vscode.ThemeColor("statusBarItem.warningBackground")
-//       : undefined;
-//     statusBarItem.color = hasErrors
-//       ? new vscode.ThemeColor("statusBarItem.errorForeground")
-//       : hasWarnings
-//       ? new vscode.ThemeColor("statusBarItem.warningForeground")
-//       : undefined;
-//   } else {
-//     statusBarItem.text = `$(x) HTML Validator (Disabled)`;
-//     statusBarItem.tooltip = "Click to enable HTML validation on save";
-//     statusBarItem.color = new vscode.ThemeColor(
-//       "statusBarItem.inactiveForeground"
-//     );
-//     statusBarItem.backgroundColor = new vscode.ThemeColor(
-//       "statusBarItem.inactiveBackground"
-//     );
-//     statusBarItem.color = undefined;
-//   }
-//   statusBarItem.show();
-// }
 
 function removeLeadingSlashOrBackslash(str: string) {
   if (!str) {
@@ -278,51 +219,6 @@ function removeLeadingSlashOrBackslash(str: string) {
   return str;
 }
 
-async function showTimedMessage(
-  message: string,
-  timeout: number,
-  type: "info" | "warning" | "error",
-  count?: number
-) {
-        // Store the original status bar text
-        const originalText = statusBarItem.text;
-        const originalTooltip = statusBarItem.tooltip;
-        const originalColor = statusBarItem.color;
-        const originalBackgroundColor = statusBarItem.backgroundColor;
-        // Update status bar with W3C prefix
-        let statusText = "W3C";
-        let tooltipText = "W3C HTML Validator";
-        if (type === "error") {
-            statusText = `W3C: ${count || 1} error${count !== 1 ? 's' : ''}`;
-            tooltipText = `W3C HTML Validator - ${count || 1} validation error${count !== 1 ? 's' : ''} found`;
-            statusBarItem.backgroundColor = new vscode.ThemeColor("statusBarItem.errorBackground");
-            statusBarItem.color = new vscode.ThemeColor("statusBarItem.errorForeground");
-        }
-        else if (type === "warning") {
-            statusText = `W3C: ${count || 1} warning${count !== 1 ? 's' : ''}`;
-            tooltipText = `W3C HTML Validator - ${count || 1} validation warning${count !== 1 ? 's' : ''} found`;
-            statusBarItem.backgroundColor = new vscode.ThemeColor("statusBarItem.warningBackground");
-            statusBarItem.color = new vscode.ThemeColor("statusBarItem.warningForeground");
-        }
-        else {
-            statusText = "W3C: OK";
-            tooltipText = "W3C HTML Validator - No validation issues";
-            // Use explicit green color for success
-            statusBarItem.backgroundColor = "#28a745"; // Explicit green color
-            statusBarItem.color = "#ffffff"; // White text for contrast
-        }
-        // Update status bar
-        statusBarItem.text = statusText;
-        statusBarItem.tooltip = tooltipText;
-        // // Restore original status bar after timeout
-        // setTimeout(() => {
-        //   statusBarItem.text = originalText;
-        //   statusBarItem.tooltip = originalTooltip;
-        //   statusBarItem.color = originalColor;
-        //   statusBarItem.backgroundColor = originalBackgroundColor;
-        //   // Don't call updateStatusBarItem() here as it resets the colors
-        // }, timeout);
-}
 
 function validate(
   document: vscode.TextDocument,
@@ -331,7 +227,6 @@ function validate(
   if (!isValidationEnabled) {
         return;
     }
-    console.log("Validating document:", document.uri.fsPath);
     // Check if vnuExecutable exists
     if (!vnuExecutable || !fs.existsSync(vnuExecutable)) {
         vscode.window.showErrorMessage("vnu executable not found. Expected path: " + vnuExecutable);
@@ -342,16 +237,16 @@ function validate(
     const config = vscode.workspace.getConfiguration("htmlValidator");
     const noStream = config.get<boolean>("noStream", true);
     const noLangDetect = config.get<boolean>("noLangDetect", true);
-    console.log({ noStream, noLangDetect });
     // Quote paths to handle spaces safely on Windows
     const quotedFilePath = `"${filePath}"`;
-    const args = ["--format", "json", "--exit-zero-always", noStream ? '--no-stream' : '', noLangDetect ? '--no-langdetect' : '', noStream ? '--no-stream' : '', quotedFilePath];
-    const outputChannel = vscode.window.createOutputChannel("HTML Validator");
-    outputChannel.clear();
-    // --no-stream
-    // Quote the vnu executable path for safe command execution
-    console.log(quotedVnuExecutable, args, { shell: true })
-    const process = child_process.spawn(quotedVnuExecutable, args, { shell: true });
+    const args = [
+      "--format", "json",
+      "--exit-zero-always",
+      ...(noStream ? ["--no-stream"] : []),
+      ...(noLangDetect ? ["--no-langdetect"] : []),
+      quotedFilePath
+    ];
+    const process = childProcess.spawn(quotedVnuExecutable, args, { shell: true });
     let stdout = "";
     let stderr = "";
     process.stdout.on("data", (data) => {
@@ -361,9 +256,6 @@ function validate(
         stderr += data.toString();
     });
     process.on("close", (code) => {
-        console.log("Validator process exited with code:", code);
-        console.log("stdout:", stdout);
-        console.log("stderr:", stderr);
         const diagnostics = [];
         try {
             const result = JSON.parse(stderr);
@@ -414,15 +306,8 @@ function validate(
             }
         }
         catch (e) {
-            if (e instanceof Error) {
-                vscode.window.showErrorMessage("Failed to parse validator output: " + e.message);
-                outputChannel.appendLine("Failed to parse validator output: " + e.message);
-            }
-            else {
-                vscode.window.showErrorMessage("Failed to parse validator output: Unknown error");
-                outputChannel.appendLine("Failed to parse validator output: Unknown error");
-            }
-            outputChannel.appendLine("Validator Output: " + stderr);
+            const errorMessage = e instanceof Error ? e.message : "Unknown error";
+            vscode.window.showErrorMessage(`Failed to parse validator output: ${errorMessage}`);
             return;
         }
         diagnosticCollection.set(document.uri, diagnostics);

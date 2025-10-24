@@ -27,21 +27,26 @@ A Visual Studio Code extension that provides offline HTML validation using W3C s
 
 - **Offline HTML Validation**: Validate your HTML files using W3C standards without needing an internet connection.
 - **Automatic Validation on Save**: Automatically validates HTML files every time you save them.
+- **Real-time Validation State**: Status bar updates immediately when code changes, showing current validation state.
 - **Status Bar Integration**:
-  - **Clickable Icon**: Easily enable or disable validation on save by clicking the status bar item.
+  - **W3C Branded Status Bar**: Displays "W3C" with clickable functionality to toggle validation.
   - **Error and Warning Indicators**:
     - **Background Colors**:
-      - **Red Background**: Validation errors detected.
+      - **Red Background**: Validation errors detected with error count.
+      - **Yellow Background**: Validation warnings detected with warning count.
       - **Green Background**: Validation passed with no errors or warnings.
       - **Gray Background**: Validation is disabled.
-    - **Icons**:
-      - **$(check)**: Validation is enabled and passed.
-      - **$(error)**: Validation errors detected.
-      - **$(x)**: Validation is disabled.
+    - **Status Text**:
+      - **"W3C"**: Validation enabled, not yet checked.
+      - **"W3C: X error(s)"**: Shows number of validation errors.
+      - **"W3C: X warning(s)"**: Shows number of validation warnings.
+      - **"W3C: OK"**: Validation passed successfully.
+      - **"W3C (Disabled)"**: Validation is disabled.
   - **Quick Access to Problems Pane**: When errors are present, clicking the status bar item opens the Problems pane.
 - **Error and Warning Diagnostics**:
   - Validation errors and warnings are displayed in the **Problems** pane.
   - Errors and warnings are highlighted directly in the editor for easy identification.
+- **Cross-Platform Support**: Works on Windows, macOS, and Linux with included binaries.
 - **Persistent Settings**:
   - Validation state (enabled/disabled) is saved between sessions.
   - Configuration options are available for advanced users to customize the extension behavior.
@@ -78,9 +83,12 @@ A Visual Studio Code extension that provides offline HTML validation using W3C s
 ### **Enabling/Disabling Validation**
 
 - **Toggle Validation**:
-  - Click the **"HTML Validator"** status bar item to enable or disable validation.
+  - Click the **"W3C"** status bar item to enable or disable validation.
 - **Persistent Setting**:
   - The validation state is saved globally and persists across sessions.
+- **Real-time Updates**:
+  - Status bar updates immediately when you make changes to HTML files.
+  - Validation state resets when code is modified, showing current status.
 
 ---
 
@@ -88,46 +96,21 @@ A Visual Studio Code extension that provides offline HTML validation using W3C s
 
 The extension contributes the following settings:
 
-1. **`htmlValidator.vnuExecutable`**:
-
-   - **Type**: `string`
-   - **Default**: _(Automatically set based on OS)_
-   - **Description**: Path to the `vnu` executable file.
-   - **Usage**: Advanced users can specify a custom path to the `vnu` executable if needed.
-
-2. **`htmlValidator.showErrorMessages`**:
+1. **`htmlValidator.autoOpenProblems`**:
 
    - **Type**: `boolean`
-   - **Default**: `true`
-   - **Description**: Show error messages when validation errors are detected.
-
-3. **`htmlValidator.showWarningMessages`**:
-
-   - **Type**: `boolean`
-   - **Default**: `true`
-   - **Description**: Show warning messages when validation warnings are detected.
-
-4. **`htmlValidator.showOkMessages`**:
-
-   - **Type**: `boolean`
-   - **Default**: `true`
-   - **Description**: Show messages when validation passes without errors or warnings.
-
-5. **`htmlValidator.autoOpenProblems`**:
-
-   - **Type**: `boolean`
-   - **Default**: `true`
+   - **Default**: `false`
    - **Description**: Automatically open the Problems pane when validation errors are detected.
 
-6. **`htmlValidator.noStream`**:
+2. **`htmlValidator.noStream`**:
 
    - **Type**: `boolean`
-   - **Default**: `false`
-   - **Description**: VNU option: Forces all documents to be be parsed in buffered mode instead of streaming mode (causes some parse errors to be treated as non-fatal document errors instead of as fatal document errors).
+   - **Default**: `true`
+   - **Description**: VNU option: Forces all documents to be parsed in buffered mode instead of streaming mode (causes some parse errors to be treated as non-fatal document errors instead of as fatal document errors).
 
-7. **`htmlValidator.noLangDetect`**:
+3. **`htmlValidator.noLangDetect`**:
    - **Type**: `boolean`
-   - **Default**: `false`
+   - **Default**: `true`
    - **Description**: VNU option: Disables language detection, so that documents are not checked for missing or mislabeled html[lang] attributes.
 
 ---
@@ -142,6 +125,24 @@ The extension contributes the following settings:
 ---
 
 ## **Release Notes**
+
+### **0.0.17**
+
+- **Code Cleanup and Optimization**:
+  - Removed commented out code blocks and unused functions
+  - Simplified argument building for vnu command using spread syntax
+  - Improved error handling with cleaner error messages
+  - Fixed linter issues and improved code organization
+  - Removed debug console.log statements
+  - Streamlined status bar logic
+- **Enhanced Status Bar**:
+  - Improved W3C branding with clearer status indicators
+  - Better error and warning count display
+  - Cleaner status bar text and tooltips
+- **Settings Simplification**:
+  - Removed unused settings (`showErrorMessages`, `showWarningMessages`, `showOkMessages`, `vnuExecutable`)
+  - Updated default values for `noStream` and `noLangDetect` to `true`
+  - Simplified configuration options
 
 ### **0.0.14**
 
