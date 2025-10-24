@@ -26,12 +26,12 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Get validation enabled state from global state
   isValidationEnabled = context.globalState.get<boolean>(
-    "htmlValidator.isValidationEnabled",
+    "offlineW3C.isValidationEnabled",
     true
   );
 
   // Get the vnuExecutable path from configuration
-  const config = vscode.workspace.getConfiguration("htmlValidator");
+  const config = vscode.workspace.getConfiguration("offlineW3C");
   let extensionPath = context.extensionPath;
 
   if (os.platform() === "win32") {
@@ -83,15 +83,15 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Create the status bar item
   statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, -100);
-  statusBarItem.command = "htmlValidator.toggleValidation";
+  statusBarItem.command = "offlineW3C.toggleValidation";
   context.subscriptions.push(statusBarItem);
   // Set initial status bar item state
   updateStatusBarItem();
   // Register the toggle validation command
-  const toggleValidationCommand = vscode.commands.registerCommand("htmlValidator.toggleValidation", () => {
+  const toggleValidationCommand = vscode.commands.registerCommand("offlineW3C.toggleValidation", () => {
     isValidationEnabled = !isValidationEnabled;
     updateStatusBarItem();
-    context.globalState.update("htmlValidator.isValidationEnabled", isValidationEnabled);
+    context.globalState.update("offlineW3C.isValidationEnabled", isValidationEnabled);
     if (!isValidationEnabled) {
       // Clear diagnostics if validation is disabled
       diagnosticCollection.clear();
@@ -159,7 +159,7 @@ function updateStatusBarItem() {
     statusBarItem.dispose();
   }
   statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, -100);
-  statusBarItem.command = "htmlValidator.toggleValidation";
+  statusBarItem.command = "offlineW3C.toggleValidation";
   _context.subscriptions.push(statusBarItem);
   if (isValidationEnabled) {
     if (!hasValidated) {
@@ -234,7 +234,7 @@ function validate(
     }
     const quotedVnuExecutable = `"${vnuExecutable}"`;
     const filePath = document.uri.fsPath;
-    const config = vscode.workspace.getConfiguration("htmlValidator");
+    const config = vscode.workspace.getConfiguration("offlineW3C");
     const noStream = config.get<boolean>("noStream", true);
     const noLangDetect = config.get<boolean>("noLangDetect", true);
     // Quote paths to handle spaces safely on Windows

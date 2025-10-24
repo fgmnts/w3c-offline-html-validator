@@ -3,7 +3,7 @@
   "displayName": "W3C Offline HTML Validator",
   "description": "A VSCode extension for offline HTML validation using W3C standards.",
   "version": "0.1.0",
-  "icon": "icon.jpg",
+  "icon": "icon.png",
   "engines": {
     "vscode": "^1.93.0"
   },
@@ -20,42 +20,27 @@
   "contributes": {
     "commands": [
       {
-        "command": "htmlValidator.toggleValidation",
-        "title": "Toggle HTML Validation"
+        "command": "offlineW3C.toggleValidation",
+        "title": "Toggle W3C HTML Validation"
       }
     ],
     "configuration": {
       "type": "object",
-      "title": "HTML Validator Settings",
+      "title": "W3C Offline HTML Validator Settings",
       "properties": {
-        "htmlValidator.showErrorMessages": {
+        "offlineW3C.autoOpenProblems": {
           "type": "boolean",
-          "default": true,
-          "description": "Show error messages."
-        },
-        "htmlValidator.showWarningMessages": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show warning messages."
-        },
-        "htmlValidator.showOkMessages": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show messages when validation passes."
-        },
-        "htmlValidator.autoOpenProblems": {
-          "type": "boolean",
-          "default": true,
+          "default": false,
           "description": "Automatically open the Problems pane when there are validation errors."
         },
-        "htmlValidator.noStream": {
+        "offlineW3C.noStream": {
           "type": "boolean",
-          "default": false,
-          "description": "VNU option: Forces all documents to be be parsed in buffered mode instead of streaming mode (causes some parse errors to be treated as non-fatal document errors instead of as fatal document errors)."
+          "default": true,
+          "description": "VNU option: Forces all documents to be parsed in buffered mode instead of streaming mode (causes some parse errors to be treated as non-fatal document errors instead of as fatal document errors)."
         },
-        "htmlValidator.noLangDetect": {
+        "offlineW3C.noLangDetect": {
           "type": "boolean",
-          "default": false,
+          "default": true,
           "description": "VNU option: Disables language detection, so that documents are not checked for missing or mislabeled html[lang] attributes."
         }
       }

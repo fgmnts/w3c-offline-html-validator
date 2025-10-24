@@ -2,7 +2,7 @@
 
 A Visual Studio Code extension that provides offline HTML validation using W3C standards. This extension integrates the W3C Nu HTML Checker directly into VSCode, allowing you to validate your HTML files without an internet connection. All necessary binaries are included in the package, ensuring seamless setup and operation.
 
-![Icon](https://github.com/fgmnts/w3c-offline-html-validator/raw/main/icon.jpg)
+![Icon](https://github.com/fgmnts/w3c-offline-html-validator/raw/main/icon.png)
 
 ---
 
@@ -96,19 +96,19 @@ A Visual Studio Code extension that provides offline HTML validation using W3C s
 
 The extension contributes the following settings:
 
-1. **`htmlValidator.autoOpenProblems`**:
+1. **`offlineW3C.autoOpenProblems`**:
 
    - **Type**: `boolean`
    - **Default**: `false`
    - **Description**: Automatically open the Problems pane when validation errors are detected.
 
-2. **`htmlValidator.noStream`**:
+2. **`offlineW3C.noStream`**:
 
    - **Type**: `boolean`
    - **Default**: `true`
    - **Description**: VNU option: Forces all documents to be parsed in buffered mode instead of streaming mode (causes some parse errors to be treated as non-fatal document errors instead of as fatal document errors).
 
-3. **`htmlValidator.noLangDetect`**:
+3. **`offlineW3C.noLangDetect`**:
    - **Type**: `boolean`
    - **Default**: `true`
    - **Description**: VNU option: Disables language detection, so that documents are not checked for missing or mislabeled html[lang] attributes.
@@ -125,6 +125,26 @@ The extension contributes the following settings:
 ---
 
 ## **Release Notes**
+
+### **0.1.0**
+
+- **Major UI/UX Overhaul**:
+  - **New Interface**: Complete redesign with improved W3C branding
+  - **Renamed Extension**: Changed from "HTML Validator" to "W3C Offline HTML Validator"
+  - **New Icon**: Updated extension icon for better visual identity
+  - **Enhanced Status Bar**: Improved W3C branding with clearer status indicators and better error/warning count display
+- **Cross-Platform Fixes**:
+  - **macOS Executable Permissions**: Fixed vnu executable permissions on macOS
+  - **Path Handling**: Improved handling of spaces in file paths for vnu, Java, and HTML documents across all platforms (Windows, macOS, Linux)
+- **Settings Modernization**:
+  - **Configuration Rename**: All settings now use `offlineW3C` prefix instead of `htmlValidator`
+  - **Simplified Settings**: Removed unused settings and streamlined configuration options
+  - **Updated Defaults**: More sensible default values for `noStream` and `noLangDetect`
+- **Code Quality Improvements**:
+  - Removed commented out code blocks and unused functions
+  - Simplified argument building for vnu command using spread syntax
+  - Improved error handling with cleaner error messages
+  - Fixed linter issues and improved code organization
 
 ### **0.0.17**
 
