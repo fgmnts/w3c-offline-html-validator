@@ -15,6 +15,15 @@ let hasValidated = false;
 let globalErrorCount = 0;
 let globalWarningCount = 0;
 
+// Animation variables
+let animationInterval: NodeJS.Timeout | null = null;
+let animationFrame = 0;
+const brailleFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+
+// Process tracking for cleanup
+let currentProcess: childProcess.ChildProcess | null = null;
+let currentTimeout: NodeJS.Timeout | null = null;
+
 let enableDebugLogging = false;
 const logTag = "W3C-OHV";
 
@@ -101,6 +110,7 @@ export async function activate(context: vscode.ExtensionContext) {
   // Register the toggle validation command
   const toggleValidationCommand = vscode.commands.registerCommand("offlineW3C.toggleValidation", () => {
     isValidationEnabled = !isValidationEnabled;
+    stopAnimation();
     updateStatusBarItem();
     context.globalState.update("offlineW3C.isValidationEnabled", isValidationEnabled);
     if (!isValidationEnabled) {
@@ -142,6 +152,8 @@ export async function activate(context: vscode.ExtensionContext) {
       const hasRealChanges = event.contentChanges.some(change => change.text.length > 0 || change.rangeLength > 0);
       if (hasRealChanges) {
         // Reset validation state when code changes
+        stopAnimation();
+        cleanupProcess();
         hasValidated = false;
         hasErrors = false;
         hasWarnings = false;
@@ -159,6 +171,8 @@ export async function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {
+  stopAnimation();
+  cleanupProcess();
   if (statusBarItem) {
     statusBarItem.dispose();
   }
@@ -219,6 +233,43 @@ function updateStatusBarItem() {
   statusBarItem.show();
 }
 
+function animateStatusBarItem() {
+  // Stop any existing animation
+  stopAnimation();
+  
+  // Reset animation frame
+  animationFrame = 0;
+  
+  // Start animation with 100ms interval for smooth effect
+  animationInterval = setInterval(() => {
+    if (statusBarItem && isValidationEnabled) {
+      const currentFrame = brailleFrames[animationFrame % brailleFrames.length];
+      statusBarItem.text = `W3C ${currentFrame}`;
+      statusBarItem.tooltip = "W3C Offline HTML Validator - Validating...";
+      statusBarItem.backgroundColor = new vscode.ThemeColor("statusBarItem.prominentBackground");
+      statusBarItem.color = new vscode.ThemeColor("statusBarItem.prominentForeground");
+      animationFrame++;
+    }
+  }, 100);
+}
+
+function stopAnimation() {
+  if (animationInterval) {
+    clearInterval(animationInterval);
+    animationInterval = null;
+  }
+}
+
+function cleanupProcess() {
+  if (currentTimeout) {
+    clearTimeout(currentTimeout);
+    currentTimeout = null;
+  }
+  if (currentProcess && !currentProcess.killed) {
+    currentProcess.kill();
+    currentProcess = null;
+  }
+}
 
 function removeLeadingSlashOrBackslash(str: string) {
   if (!str) {
@@ -236,20 +287,27 @@ function validate(
   diagnosticCollection: vscode.DiagnosticCollection
 ): void {
   if (!isValidationEnabled) {
+    stopAnimation();
+    cleanupProcess();
     return;
   }
   // Check if vnuExecutable exists
   if (!vnuExecutable || !fs.existsSync(vnuExecutable)) {
     vscode.window.showErrorMessage("vnu executable not found. Expected path: " + vnuExecutable);
+    stopAnimation();
+    cleanupProcess();
     return;
   }
-  const quotedVnuExecutable = `"${vnuExecutable}"`;
+
+  log("Validating document", document.uri.fsPath);
+
+  animateStatusBarItem();
+
   const filePath = document.uri.fsPath;
   const config = vscode.workspace.getConfiguration("offlineW3C");
   const noStream = config.get<boolean>("noStream", true);
   const noLangDetect = config.get<boolean>("noLangDetect", true);
   // Quote paths to handle spaces safely on Windows
-  const quotedFilePath = `"${filePath}"`;
   const args = [
     "--format", "json",
     "--exit-zero-always",
@@ -259,37 +317,123 @@ function validate(
     filePath
   ];
   log(vnuExecutable, args);
-  const process = childProcess.spawn(vnuExecutable, args, { shell: false });
+  
+  // Clean up any existing process
+  cleanupProcess();
+  
+  try {
+    currentProcess = childProcess.spawn(vnuExecutable, args, { shell: false });
+  } catch (spawnError) {
+    const errorMessage = spawnError instanceof Error ? spawnError.message : "Unknown spawn error";
+    vscode.window.showErrorMessage(`Failed to start validator process: ${errorMessage}`);
+    stopAnimation();
+    return;
+  }
+  
   let stdout = "";
   let stderr = "";
-  process.stdout.on("data", (data) => {
+  
+  // Set up timeout for long-running validations (30 seconds)
+  currentTimeout = setTimeout(() => {
+    if (currentProcess && !currentProcess.killed) {
+      currentProcess.kill();
+      vscode.window.showErrorMessage("Validation timed out after 30 seconds");
+      stopAnimation();
+    }
+  }, 30000);
+  
+  currentProcess.stdout?.on("data", (data) => {
     stdout += data.toString();
   });
-  process.stderr.on("data", (data) => {
+  
+  currentProcess.stderr?.on("data", (data) => {
     stderr += data.toString();
   });
-  process.on("close", (code) => {
+  
+  // Handle process errors (e.g., executable not found, permission denied)
+  currentProcess.on("error", (error) => {
+    if (currentTimeout) {
+      clearTimeout(currentTimeout);
+      currentTimeout = null;
+    }
+    vscode.window.showErrorMessage(`Validator process error: ${error.message}`);
+    stopAnimation();
+  });
+  
+  currentProcess.on("close", (code) => {
+    // Clear timeout since process completed
+    if (currentTimeout) {
+      clearTimeout(currentTimeout);
+      currentTimeout = null;
+    }
+    
     const diagnostics = [];
+    
+    // Handle non-zero exit codes
+    if (code !== 0 && code !== null) {
+      vscode.window.showErrorMessage(`Validator process exited with code ${code}`);
+      stopAnimation();
+      currentProcess = null; // Clear process reference
+      return;
+    }
+    
     try {
+      // Check if we have valid JSON output
+      if (!stderr.trim()) {
+        vscode.window.showErrorMessage("Validator produced no output");
+        stopAnimation();
+        currentProcess = null; // Clear process reference
+        return;
+      }
+      
       const result = JSON.parse(stderr);
       log(result);
+      
+      // Validate result structure
+      if (!result || typeof result !== 'object') {
+        vscode.window.showErrorMessage("Validator output is not a valid JSON object");
+        stopAnimation();
+        currentProcess = null; // Clear process reference
+        return;
+      }
+      
+      if (!Array.isArray(result.messages)) {
+        vscode.window.showErrorMessage("Validator output missing 'messages' array");
+        stopAnimation();
+        currentProcess = null; // Clear process reference
+        return;
+      }
+      
       let severeCount = 0;
       let warningCount = 0;
       for (const message of result.messages) {
-        const line = Math.max(0, message.lastLine - 1);
-        const col = Math.max(0, message.lastColumn - 1);
-        const range = new vscode.Range(line, col, line, col);
-        const severity = message.type === "error"
-          ? vscode.DiagnosticSeverity.Error
-          : vscode.DiagnosticSeverity.Warning;
-        if (severity === vscode.DiagnosticSeverity.Error) {
-          severeCount++;
+        try {
+          // Validate message structure
+          if (!message || typeof message !== 'object') {
+            log("Skipping invalid message:", message);
+            continue;
+          }
+          
+          const line = Math.max(0, (message.lastLine || 1) - 1);
+          const col = Math.max(0, (message.lastColumn || 1) - 1);
+          const range = new vscode.Range(line, col, line, col);
+          const severity = message.type === "error"
+            ? vscode.DiagnosticSeverity.Error
+            : vscode.DiagnosticSeverity.Warning;
+          
+          if (severity === vscode.DiagnosticSeverity.Error) {
+            severeCount++;
+          }
+          else {
+            warningCount++;
+          }
+          
+          const diagnostic = new vscode.Diagnostic(range, message.message || "Unknown validation issue", severity);
+          diagnostics.push(diagnostic);
+        } catch (messageError) {
+          log("Error processing message:", messageError, "Message:", message);
+          // Continue processing other messages
         }
-        else {
-          warningCount++;
-        }
-        const diagnostic = new vscode.Diagnostic(range, message.message, severity);
-        diagnostics.push(diagnostic);
       }
       if (severeCount > 0) {
         log("Errors found", severeCount);
@@ -324,11 +468,17 @@ function validate(
     }
     catch (e) {
       const errorMessage = e instanceof Error ? e.message : "Unknown error";
-      vscode.window.showErrorMessage(`Failed to parse validator output: ${errorMessage}`);
+      log("JSON parse error:", errorMessage);
+      log("Raw stderr output:", stderr);
+      vscode.window.showErrorMessage(`Failed to parse validator output: ${errorMessage}. Check the output panel for details.`);
+      stopAnimation();
+      currentProcess = null; // Clear process reference
       return;
     }
     diagnosticCollection.set(document.uri, diagnostics);
-    // Update status bar to show current validation state
+    // Stop animation and update status bar to show current validation state
+    stopAnimation();
+    currentProcess = null; // Clear process reference
     updateStatusBarItem();
   });
 }
