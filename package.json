@@ -28,25 +28,40 @@
       "type": "object",
       "title": "W3C Offline HTML Validator Settings",
       "properties": {
-        "offlineW3C.autoOpenProblems": {
+        "OfflineW3cHTMLValidator.autoOpenProblems": {
           "type": "boolean",
           "default": false,
           "description": "Automatically open the Problems pane when there are validation errors."
         },
-        "offlineW3C.noStream": {
+        "OfflineW3cHTMLValidator.noStream": {
           "type": "boolean",
           "default": true,
           "description": "VNU option: Forces all documents to be parsed in buffered mode instead of streaming mode (causes some parse errors to be treated as non-fatal document errors instead of as fatal document errors)."
         },
-        "offlineW3C.noLangDetect": {
+        "OfflineW3cHTMLValidator.noLangDetect": {
           "type": "boolean",
           "default": true,
           "description": "VNU option: Disables language detection, so that documents are not checked for missing or mislabeled html[lang] attributes."
         },
-        "offlineW3C.enableDebugLogging": {
+        "OfflineW3cHTMLValidator.enableDebugLogging": {
           "type": "boolean",
           "default": false,
           "description": "Enable debug logging to the VSCode developer console."
+        },
+        "OfflineW3cHTMLValidator.rosetta": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable Rosetta 2 detection and installation."
+        },
+        "OfflineW3cHTMLValidator.rosettaComplex": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable complex Rosetta 2 detection and installation."
+        },
+        "OfflineW3cHTMLValidator.validateOnStartup": {
+          "type": "boolean",
+          "default": false,
+          "description": "Validate the active editor's document if it's an HTML file on startup."
         }
       }
     }

@@ -96,22 +96,42 @@ A Visual Studio Code extension that provides offline HTML validation using W3C s
 
 The extension contributes the following settings:
 
-1. **`offlineW3C.autoOpenProblems`**:
+1. **`OfflineW3cHTMLValidator.autoOpenProblems`**:
 
    - **Type**: `boolean`
    - **Default**: `false`
    - **Description**: Automatically open the Problems pane when validation errors are detected.
 
-2. **`offlineW3C.noStream`**:
+2. **`OfflineW3cHTMLValidator.noStream`**:
 
    - **Type**: `boolean`
    - **Default**: `true`
    - **Description**: VNU option: Forces all documents to be parsed in buffered mode instead of streaming mode (causes some parse errors to be treated as non-fatal document errors instead of as fatal document errors).
 
-3. **`offlineW3C.noLangDetect`**:
+3. **`OfflineW3cHTMLValidator.noLangDetect`**:
    - **Type**: `boolean`
    - **Default**: `true`
    - **Description**: VNU option: Disables language detection, so that documents are not checked for missing or mislabeled html[lang] attributes.
+
+4. **`OfflineW3cHTMLValidator.enableDebugLogging`**:
+   - **Type**: `boolean`
+   - **Default**: `false`
+   - **Description**: Enable debug logging to the VSCode developer console.
+
+5. **`OfflineW3cHTMLValidator.rosetta`**:
+   - **Type**: `boolean`
+   - **Default**: `false`
+   - **Description**: Enable Rosetta 2 detection and installation.
+
+6. **`OfflineW3cHTMLValidator.rosettaComplex`**:
+   - **Type**: `boolean`
+   - **Default**: `false`
+   - **Description**: Enable complex Rosetta 2 detection and installation.
+
+7. **`OfflineW3cHTMLValidator.validateOnStartup`**:
+   - **Type**: `boolean`
+   - **Default**: `false`
+   - **Description**: Validate the active editor's document if it's an HTML file on startup.
 
 ---
 
@@ -125,6 +145,24 @@ The extension contributes the following settings:
 ---
 
 ## **Release Notes**
+
+### **0.1.2**
+
+- **Enhanced User Experience**:
+  - **Animated Status Bar**: Added smooth animation during validation process with braille spinner
+  - **Improved Path Handling**: Fixed path escaping in vnu command arguments instead of in script wrapper
+  - **Better Error Handling**: Enhanced error messages and validation state management
+- **New Configuration Options**:
+  - **Debug Logging**: Added `OfflineW3cHTMLValidator.enableDebugLogging` setting for troubleshooting
+  - **Rosetta Detection**: Added `OfflineW3cHTMLValidator.rosetta` and `OfflineW3cHTMLValidator.rosettaComplex` settings for macOS Apple Silicon compatibility
+  - **Startup Validation**: Added `OfflineW3cHTMLValidator.validateOnStartup` setting to validate HTML files on extension startup
+- **Settings Modernization**:
+  - **Updated Configuration Namespace**: Changed from `offlineW3C` to `OfflineW3cHTMLValidator` to fix VS Code settings display formatting
+  - **Fixed Settings Display**: Resolved the "Offline W3 C: " spacing issue in VS Code settings UI
+- **Code Quality Improvements**:
+  - Improved code formatting and whitespace consistency
+  - Enhanced error handling and validation state management
+  - Better separation of concerns in validation logic
 
 ### **0.1.0**
 
@@ -241,9 +279,9 @@ Contributions are welcome! Please follow these steps:
 
 4. **Development Workflow**:
 
-   - **Use Node.js Version 20**:
+   - **Use Node.js Version 22**:
      ```bash
-     nvm use 20
+     nvm use 22
      ```
    - **Compile the Extension**:
      ```bash
@@ -251,16 +289,37 @@ Contributions are welcome! Please follow these steps:
      ```
    - **Package the Extension**:
      ```bash
+     npm run cp
+     ```
+     This command compiles the TypeScript code and creates a `.vsix` package file for local installation or distribution.
+   - **Publish the Extension**:
+     ```bash
+     npm run cpp
+     ```
+     This command compiles, packages, and publishes the extension to the Visual Studio Code Marketplace.
+   - **Manual Packaging** (Alternative):
+     ```bash
      vsce package
      ```
-   - **Release the Extension**:
+   - **Manual Publishing** (Alternative):
      ```bash
      vsce publish
      ```
    - **Run in Debug Mode**:
      - Press `F5` in VSCode to launch the extension in a new Extension Development Host window.
 
-5. **Submit a Pull Request**:
+5. **Available NPM Scripts**:
+
+   The project includes several convenient npm scripts for development and publishing:
+
+   - **`npm run compile`**: Compiles TypeScript source code to JavaScript
+   - **`npm run cp`**: Short for "compile and package" - compiles the code and creates a `.vsix` package file
+   - **`npm run cpp`**: Short for "compile, package, and publish" - compiles, packages, and publishes to the marketplace
+   - **`npm run lint`**: Runs ESLint to check code quality
+   - **`npm test`**: Runs the test suite
+   - **`npm run watch`**: Runs TypeScript compiler in watch mode for development
+
+6. **Submit a Pull Request**:
    - Push your changes to your fork and submit a pull request to the `main` branch.
 
 ---

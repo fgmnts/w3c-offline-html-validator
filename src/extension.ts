@@ -4,6 +4,7 @@ import * as childProcess from "child_process";
 import * as path from "path";
 import * as fs from "fs";
 import * as os from "os";
+import { detectRosettaComplex, detectRosettaSimple } from "./detect_rosetta";
 
 let vnuExecutable: string;
 let isValidationEnabled = true;
@@ -24,8 +25,11 @@ const brailleFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '
 let currentProcess: childProcess.ChildProcess | null = null;
 let currentTimeout: NodeJS.Timeout | null = null;
 
+// Extension activation state
+let isExtensionActivated = false;
+
 let enableDebugLogging = false;
-const logTag = "W3C-OHV";
+const logTag = "[Offline W3C HTML Validator]";
 
 function log(...args: any[]) {
   if (enableDebugLogging) {
@@ -34,23 +38,9 @@ function log(...args: any[]) {
 }
 
 export async function activate(context: vscode.ExtensionContext) {
-  log("Activating W3C Offline HTML Validator extension");
+  console.log(`${logTag} Activating W3C Offline HTML Validator extension`); // always log this
   _context = context;
-  // Create diagnostic collection
-  const diagnosticCollection =
-    vscode.languages.createDiagnosticCollection("html-validator");
-  context.subscriptions.push(diagnosticCollection);
-
-  // Get validation enabled state from global state
-  isValidationEnabled = context.globalState.get<boolean>(
-    "offlineW3C.isValidationEnabled",
-    true
-  );
-
-  // Get the vnuExecutable path from configuration
-  const config = vscode.workspace.getConfiguration("offlineW3C");
   let extensionPath = context.extensionPath;
-  enableDebugLogging = config.get<boolean>("enableDebugLogging", false);
 
   if (os.platform() === "win32") {
     // On Windows, remove leading slash if present
@@ -61,9 +51,46 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.window.showErrorMessage("Unable to determine the extension path.");
     return;
   }
+  // Create diagnostic collection
+  const diagnosticCollection =
+    vscode.languages.createDiagnosticCollection("html-validator");
+  context.subscriptions.push(diagnosticCollection);
+
+  // Get validation enabled state from global state
+  isValidationEnabled = context.globalState.get<boolean>(
+    "offlineW3C.isValidationEnabled",
+    true
+  );
+  
+  // Get the vnuExecutable path from configuration
+  const config = vscode.workspace.getConfiguration("OfflineW3cHTMLValidator");
+  enableDebugLogging = config.get<boolean>("enableDebugLogging", false);
+
+  // get all settings and debuglog
+  // log(`───────────────────────────────────────────────────────────────────────`);
+  // log(` Settings:`, config.inspect("OfflineW3cHTMLValidator"));
+  log(`CONFIG | enableDebugLogging:`, config.get<boolean>("enableDebugLogging", false));
+  log(`CONFIG | rosetta:`, config.get<boolean>("rosetta", false));
+  log(`CONFIG | rosettaComplex:`, config.get<boolean>("rosettaComplex", false));
+  log(`CONFIG | validateOnStartup:`, config.get<boolean>("validateOnStartup", false));
+  log(`CONFIG | noStream:`, config.get<boolean>("noStream", true));
+  log(`CONFIG | noLangDetect:`, config.get<boolean>("noLangDetect", true));
+  log(`CONFIG | autoOpenProblems:`, config.get<boolean>("autoOpenProblems", false));
+  // log(`───────────────────────────────────────────────────────────────────────`);
+
+
+  
 
   switch (os.platform()) {
     case "darwin": // macOS
+      // if rosetta check enabled check wheter to run complex or else simple
+      if (config.get<boolean>("rosetta", false)) {
+        if (config.get<boolean>("rosettaComplex", false)) {
+          detectRosettaComplex(extensionPath);
+        } else {
+          detectRosettaSimple();
+        }
+      }
       vnuExecutable = path.join(
         extensionPath,
         "validator",
@@ -98,7 +125,7 @@ export async function activate(context: vscode.ExtensionContext) {
       return;
   }
 
-  log("Offline W3C bin", vnuExecutable);
+  log("BINARY |", vnuExecutable);
 
 
   // Create the status bar item
@@ -128,13 +155,19 @@ export async function activate(context: vscode.ExtensionContext) {
     }
   });
   context.subscriptions.push(toggleValidationCommand);
-  // Validate the active editor's document if it's an HTML file
-  if (vscode.window.activeTextEditor) {
-    const document = vscode.window.activeTextEditor.document;
-    if (document.languageId === "html") {
-      validate(document, diagnosticCollection);
+
+
+  // if option is set to true
+  // then validate the active editor's document if it's an HTML file
+  if (config.get<boolean>("validateOnStartup", false)) {
+    if (vscode.window.activeTextEditor) {
+      const document = vscode.window.activeTextEditor.document;
+      if (document.languageId === "html") {
+        validate(document, diagnosticCollection);
+      }
     }
   }
+
   // Listen to document save events
   context.subscriptions.push(vscode.workspace.onDidSaveTextDocument((document) => {
     if (document.languageId === "html") {
@@ -167,10 +200,15 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(vscode.workspace.onDidCloseTextDocument((document) => {
     diagnosticCollection.delete(document.uri);
   }));
+
+  // Mark extension as fully activated
+  isExtensionActivated = true;
+
   log("W3C Offline HTML Validator extension activated");
 }
 
 export function deactivate() {
+  isExtensionActivated = false;
   stopAnimation();
   cleanupProcess();
   if (statusBarItem) {
@@ -234,12 +272,17 @@ function updateStatusBarItem() {
 }
 
 function animateStatusBarItem() {
+  // Only animate if extension is fully activated
+  if (!isExtensionActivated) {
+    return;
+  }
+
   // Stop any existing animation
   stopAnimation();
-  
+
   // Reset animation frame
   animationFrame = 0;
-  
+
   // Start animation with 100ms interval for smooth effect
   animationInterval = setInterval(() => {
     if (statusBarItem && isValidationEnabled) {
@@ -304,7 +347,7 @@ function validate(
   animateStatusBarItem();
 
   const filePath = document.uri.fsPath;
-  const config = vscode.workspace.getConfiguration("offlineW3C");
+  const config = vscode.workspace.getConfiguration("OfflineW3cHTMLValidator");
   const noStream = config.get<boolean>("noStream", true);
   const noLangDetect = config.get<boolean>("noLangDetect", true);
   // Quote paths to handle spaces safely on Windows
@@ -317,10 +360,10 @@ function validate(
     filePath
   ];
   log(vnuExecutable, args);
-  
+
   // Clean up any existing process
   cleanupProcess();
-  
+
   try {
     currentProcess = childProcess.spawn(vnuExecutable, args, { shell: false });
   } catch (spawnError) {
@@ -329,10 +372,10 @@ function validate(
     stopAnimation();
     return;
   }
-  
+
   let stdout = "";
   let stderr = "";
-  
+
   // Set up timeout for long-running validations (30 seconds)
   currentTimeout = setTimeout(() => {
     if (currentProcess && !currentProcess.killed) {
@@ -341,15 +384,15 @@ function validate(
       stopAnimation();
     }
   }, 30000);
-  
+
   currentProcess.stdout?.on("data", (data) => {
     stdout += data.toString();
   });
-  
+
   currentProcess.stderr?.on("data", (data) => {
     stderr += data.toString();
   });
-  
+
   // Handle process errors (e.g., executable not found, permission denied)
   currentProcess.on("error", (error) => {
     if (currentTimeout) {
@@ -359,16 +402,16 @@ function validate(
     vscode.window.showErrorMessage(`Validator process error: ${error.message}`);
     stopAnimation();
   });
-  
+
   currentProcess.on("close", (code) => {
     // Clear timeout since process completed
     if (currentTimeout) {
       clearTimeout(currentTimeout);
       currentTimeout = null;
     }
-    
+
     const diagnostics = [];
-    
+
     // Handle non-zero exit codes
     if (code !== 0 && code !== null) {
       vscode.window.showErrorMessage(`Validator process exited with code ${code}`);
@@ -376,7 +419,7 @@ function validate(
       currentProcess = null; // Clear process reference
       return;
     }
-    
+
     try {
       // Check if we have valid JSON output
       if (!stderr.trim()) {
@@ -385,10 +428,10 @@ function validate(
         currentProcess = null; // Clear process reference
         return;
       }
-      
+
       const result = JSON.parse(stderr);
       log(result);
-      
+
       // Validate result structure
       if (!result || typeof result !== 'object') {
         vscode.window.showErrorMessage("Validator output is not a valid JSON object");
@@ -396,14 +439,14 @@ function validate(
         currentProcess = null; // Clear process reference
         return;
       }
-      
+
       if (!Array.isArray(result.messages)) {
         vscode.window.showErrorMessage("Validator output missing 'messages' array");
         stopAnimation();
         currentProcess = null; // Clear process reference
         return;
       }
-      
+
       let severeCount = 0;
       let warningCount = 0;
       for (const message of result.messages) {
@@ -413,21 +456,21 @@ function validate(
             log("Skipping invalid message:", message);
             continue;
           }
-          
+
           const line = Math.max(0, (message.lastLine || 1) - 1);
           const col = Math.max(0, (message.lastColumn || 1) - 1);
           const range = new vscode.Range(line, col, line, col);
           const severity = message.type === "error"
             ? vscode.DiagnosticSeverity.Error
             : vscode.DiagnosticSeverity.Warning;
-          
+
           if (severity === vscode.DiagnosticSeverity.Error) {
             severeCount++;
           }
           else {
             warningCount++;
           }
-          
+
           const diagnostic = new vscode.Diagnostic(range, message.message || "Unknown validation issue", severity);
           diagnostics.push(diagnostic);
         } catch (messageError) {
@@ -436,14 +479,14 @@ function validate(
         }
       }
       if (severeCount > 0) {
-        log("Errors found", severeCount);
+        const autoOpenProblems = config.get<boolean>("autoOpenProblems", false);
+        log("Errors found", severeCount, "autoOpenProblems:", autoOpenProblems);
         hasErrors = true;
         hasWarnings = false;
         hasValidated = true;
         globalErrorCount = severeCount;
         globalWarningCount = 0;
         // Fetch configuration values
-        const autoOpenProblems = config.get<boolean>("autoOpenProblems", false);
         if (autoOpenProblems) {
           // Note: This may still steal focus, so it's disabled by default
           vscode.commands.executeCommand("workbench.actions.view.problems");
