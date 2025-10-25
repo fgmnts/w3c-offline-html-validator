@@ -72,7 +72,7 @@ export async function activate(context: vscode.ExtensionContext) {
   log(`CONFIG | enableDebugLogging:`, config.get<boolean>("enableDebugLogging", false));
   log(`CONFIG | rosetta:`, config.get<boolean>("rosetta", false));
   log(`CONFIG | rosettaComplex:`, config.get<boolean>("rosettaComplex", false));
-  log(`CONFIG | validateOnStartup:`, config.get<boolean>("validateOnStartup", false));
+  log(`CONFIG | validateOnOpen:`, config.get<boolean>("validateOnOpen", false));
   log(`CONFIG | noStream:`, config.get<boolean>("noStream", true));
   log(`CONFIG | noLangDetect:`, config.get<boolean>("noLangDetect", true));
   log(`CONFIG | autoOpenProblems:`, config.get<boolean>("autoOpenProblems", false));
@@ -159,7 +159,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // if option is set to true
   // then validate the active editor's document if it's an HTML file
-  if (config.get<boolean>("validateOnStartup", false)) {
+  if (config.get<boolean>("validateOnOpen", false)) {
     if (vscode.window.activeTextEditor) {
       const document = vscode.window.activeTextEditor.document;
       if (document.languageId === "html") {
@@ -172,6 +172,27 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(vscode.workspace.onDidSaveTextDocument((document) => {
     if (document.languageId === "html") {
       validate(document, diagnosticCollection);
+    }
+  }));
+
+  // Listen to document open/switch events
+  context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor((editor) => {
+    // Reset validation state when switching documents
+    stopAnimation();
+    cleanupProcess();
+    hasValidated = false;
+    hasErrors = false;
+    hasWarnings = false;
+    globalErrorCount = 0;
+    globalWarningCount = 0;
+    updateStatusBarItem();
+    
+    // If validateOnOpen is enabled and the new document is HTML, validate it
+    if (config.get<boolean>("validateOnOpen", false) && editor) {
+      const document = editor.document;
+      if (document.languageId === "html") {
+        validate(document, diagnosticCollection);
+      }
     }
   }));
   // Listen to document changes to reset validation state

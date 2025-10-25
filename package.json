@@ -31,7 +31,7 @@
         "OfflineW3cHTMLValidator.autoOpenProblems": {
           "type": "boolean",
           "default": false,
-          "description": "Automatically open the Problems pane when there are validation errors."
+          "description": "Automatically open the Problems pane when there are validation errors. Note: This will take focus away from the editor."
         },
         "OfflineW3cHTMLValidator.noStream": {
           "type": "boolean",
@@ -51,17 +51,17 @@
         "OfflineW3cHTMLValidator.rosetta": {
           "type": "boolean",
           "default": false,
-          "description": "Enable Rosetta 2 detection and installation."
+          "description": "Enable Rosetta 2 detection and installation. Required for Apple Silicon Macs (M1/M2/M3/M4) to run the included Java runtime."
         },
         "OfflineW3cHTMLValidator.rosettaComplex": {
           "type": "boolean",
           "default": false,
-          "description": "Enable complex Rosetta 2 detection and installation."
+          "description": "Enable complex Rosetta 2 detection and installation. Alternative detection method for Apple Silicon Macs."
         },
-        "OfflineW3cHTMLValidator.validateOnStartup": {
+        "OfflineW3cHTMLValidator.validateOnOpen": {
           "type": "boolean",
           "default": false,
-          "description": "Validate the active editor's document if it's an HTML file on startup."
+          "description": "Validate HTML files when they are opened or when switching between documents."
         }
       }
     }

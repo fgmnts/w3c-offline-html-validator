@@ -58,6 +58,15 @@ A Visual Studio Code extension that provides offline HTML validation using W3C s
 - **Visual Studio Code** version **1.93.0** or higher.
 - **Operating System**: Windows, macOS, or Linux.
 - **No additional installations required**: All necessary binaries are included.
+- **Apple Silicon Macs (M1/M2/M3/M4)**: 
+  - **Rosetta 2** is required for the included Java runtime. 
+  - **Important**: Rosetta 2 is NOT automatically installed when the extension runs from terminal/command line. You must install it manually.
+  - **Manual Installation**: Run this command in Terminal to install Rosetta 2:
+    ```bash
+    softwareupdate --install-rosetta --agree-to-license
+    ```
+  - For more information, see [Apple's Rosetta 2 documentation](https://support.apple.com/en-us/102527).
+  - The extension includes settings (`OfflineW3cHTMLValidator.rosetta` and `OfflineW3cHTMLValidator.rosettaComplex`) to help with Rosetta 2 detection and installation.
 
 ---
 
@@ -100,7 +109,7 @@ The extension contributes the following settings:
 
    - **Type**: `boolean`
    - **Default**: `false`
-   - **Description**: Automatically open the Problems pane when validation errors are detected.
+   - **Description**: Automatically open the Problems pane when validation errors are detected. **Note**: This will take focus away from the editor.
 
 2. **`OfflineW3cHTMLValidator.noStream`**:
 
@@ -121,17 +130,17 @@ The extension contributes the following settings:
 5. **`OfflineW3cHTMLValidator.rosetta`**:
    - **Type**: `boolean`
    - **Default**: `false`
-   - **Description**: Enable Rosetta 2 detection and installation.
+   - **Description**: Enable Rosetta 2 detection and installation. Required for Apple Silicon Macs (M1/M2/M3/M4) to run the included Java runtime.
 
 6. **`OfflineW3cHTMLValidator.rosettaComplex`**:
    - **Type**: `boolean`
    - **Default**: `false`
-   - **Description**: Enable complex Rosetta 2 detection and installation.
+   - **Description**: Enable complex Rosetta 2 detection and installation. Alternative detection method for Apple Silicon Macs.
 
-7. **`OfflineW3cHTMLValidator.validateOnStartup`**:
+7. **`OfflineW3cHTMLValidator.validateOnOpen`**:
    - **Type**: `boolean`
    - **Default**: `false`
-   - **Description**: Validate the active editor's document if it's an HTML file on startup.
+   - **Description**: Validate HTML files when they are opened or when switching between documents.
 
 ---
 
@@ -139,6 +148,11 @@ The extension contributes the following settings:
 
 - **Auto-Dismiss Pop-up Messages**:
   - The extension uses status bar messages instead of pop-up notifications to inform about validation results due to limitations in programmatically dismissing pop-ups.
+- **Focus Management**:
+  - The `autoOpenProblems` setting will take focus away from the editor when automatically opening the Problems pane. This is a VS Code limitation and cannot be avoided.
+- **Rosetta 2 Auto-Installation**:
+  - Rosetta 2 is not automatically installed when the extension runs from terminal/command line (which is how VS Code extensions execute processes). This differs from running GUI apps directly, where macOS prompts for Rosetta 2 installation.
+  - Users must manually install Rosetta 2 using the terminal command: `softwareupdate --install-rosetta --agree-to-license`
 - **Performance on Large Files**:
   - Validation may be slower for very large HTML files.
 
@@ -155,7 +169,7 @@ The extension contributes the following settings:
 - **New Configuration Options**:
   - **Debug Logging**: Added `OfflineW3cHTMLValidator.enableDebugLogging` setting for troubleshooting
   - **Rosetta Detection**: Added `OfflineW3cHTMLValidator.rosetta` and `OfflineW3cHTMLValidator.rosettaComplex` settings for macOS Apple Silicon compatibility
-  - **Startup Validation**: Added `OfflineW3cHTMLValidator.validateOnStartup` setting to validate HTML files on extension startup
+  - **Open Validation**: Added `OfflineW3cHTMLValidator.validateOnOpen` setting to validate HTML files when opened or switching documents
 - **Settings Modernization**:
   - **Updated Configuration Namespace**: Changed from `offlineW3C` to `OfflineW3cHTMLValidator` to fix VS Code settings display formatting
   - **Fixed Settings Display**: Resolved the "Offline W3 C: " spacing issue in VS Code settings UI
