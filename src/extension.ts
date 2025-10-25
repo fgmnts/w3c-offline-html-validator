@@ -15,6 +15,7 @@ let _context: vscode.ExtensionContext;
 let hasValidated = false;
 let globalErrorCount = 0;
 let globalWarningCount = 0;
+let isWindows = false;
 
 // Animation variables
 let animationInterval: NodeJS.Timeout | null = null;
@@ -45,6 +46,7 @@ export async function activate(context: vscode.ExtensionContext) {
   if (os.platform() === "win32") {
     // On Windows, remove leading slash if present
     extensionPath = removeLeadingSlashOrBackslash(extensionPath);
+    isWindows = true;
   }
 
   if (!extensionPath) {
@@ -61,7 +63,7 @@ export async function activate(context: vscode.ExtensionContext) {
     "offlineW3C.isValidationEnabled",
     true
   );
-  
+
   // Get the vnuExecutable path from configuration
   const config = vscode.workspace.getConfiguration("OfflineW3cHTMLValidator");
   enableDebugLogging = config.get<boolean>("enableDebugLogging", false);
@@ -79,7 +81,7 @@ export async function activate(context: vscode.ExtensionContext) {
   // log(`───────────────────────────────────────────────────────────────────────`);
 
 
-  
+
 
   switch (os.platform()) {
     case "darwin": // macOS
@@ -186,7 +188,7 @@ export async function activate(context: vscode.ExtensionContext) {
     globalErrorCount = 0;
     globalWarningCount = 0;
     updateStatusBarItem();
-    
+
     // If validateOnOpen is enabled and the new document is HTML, validate it
     if (config.get<boolean>("validateOnOpen", false) && editor) {
       const document = editor.document;
@@ -355,13 +357,13 @@ function validate(
     cleanupProcess();
     return;
   }
-  // Check if vnuExecutable exists
-  if (!vnuExecutable || !fs.existsSync(vnuExecutable)) {
-    vscode.window.showErrorMessage("vnu executable not found. Expected path: " + vnuExecutable);
-    stopAnimation();
-    cleanupProcess();
-    return;
-  }
+  // // Check if vnuExecutable exists
+  // if (!vnuExecutable || !fs.existsSync(vnuExecutable)) {
+  //   vscode.window.showErrorMessage("vnu executable not found. Expected path: " + vnuExecutable);
+  //   stopAnimation();
+  //   cleanupProcess();
+  //   return;
+  // }
 
   log("Validating document", document.uri.fsPath);
 
@@ -378,15 +380,16 @@ function validate(
     ...(noStream ? ["--no-stream"] : []),
     ...(noLangDetect ? ["--no-langdetect"] : []),
     "--",
-    filePath
+    isWindows ? `"${filePath}"` : filePath // quote the path if using shell
+    // filePath
   ];
-  log(vnuExecutable, args);
+  log("COMMAND |", isWindows ? `"${vnuExecutable}"` : vnuExecutable, args.join(" "));
 
   // Clean up any existing process
   cleanupProcess();
 
   try {
-    currentProcess = childProcess.spawn(vnuExecutable, args, { shell: false });
+    currentProcess = childProcess.spawn(isWindows ? `"${vnuExecutable}"` : vnuExecutable, args, { shell: isWindows });
   } catch (spawnError) {
     const errorMessage = spawnError instanceof Error ? spawnError.message : "Unknown spawn error";
     vscode.window.showErrorMessage(`Failed to start validator process: ${errorMessage}`);
