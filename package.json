@@ -60,7 +60,7 @@
         },
         "OfflineW3cHTMLValidator.validateOnOpen": {
           "type": "boolean",
-          "default": false,
+          "default": true,
           "description": "Validate HTML files when they are opened or when switching between documents."
         }
       }
